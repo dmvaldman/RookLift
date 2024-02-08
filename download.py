@@ -79,13 +79,13 @@ def get_daily_stress(garmin, start_date, end_date, save=False):
         stress_data.append(data_formatted)
         time.sleep(0.2)
 
+    # sort by date in calendar order
+    stress_data.sort(key=lambda x: datetime.datetime.strptime(x['date'], '%Y-%m-%d'))
+
     # convert array from [{date, value1, value2}, ...] to {date: [dates], value1: [value1s], value2: [value2s]}
     daily_stress = {}
     for key in stress_data[0].keys():
         daily_stress[key] = [x[key] for x in stress_data]
-
-    # sort by date in calendar order
-    daily_stress.sort(key=lambda x: datetime.datetime.strptime(x['date'], '%Y-%m-%d'))
 
     if save:
         # save to data dir as json
@@ -104,32 +104,23 @@ def get_body_battery(garmin, start_date, end_date, save=False):
     # if start_date is more than 30 days behind end_date, batch into 30-day chunks and combine
     battery_data = []
     if (end_date - start_date).days > 30:
-        for day in range((end_date - start_date).days // 30):
+        for day in range((end_date - start_date).days // 30 + 1):
             start = start_date + datetime.timedelta(days=30 * day)
             end = start_date + datetime.timedelta(days=30 * (day + 1))
             body_battery = garmin.get_body_battery(start.isoformat(), end.isoformat())
             for data in body_battery:
+                if data['charged'] is None and data['drained'] is None:
+                    continue
                 day_battery = {
                     "date": data['date'],
                     "charged": data['charged'],
-                    "drained": data['drained']
+                    "drained": data['drained'],
+                    "delta": data['charged'] - data['drained']
                 }
                 battery_data.append(day_battery)
-            time.sleep(0.2)
+            time.sleep(0.1)
     else:
         body_battery = garmin.get_body_battery(start_date.isoformat(), end_date.isoformat())
-
-    # sort by date in calendar order
-    battery_data.sort(key=lambda x: datetime.datetime.strptime(x['date'], '%Y-%m-%d'))
-
-    battery_data = []
-    for data in body_battery:
-        day_battery = {
-            "date": data['date'],
-            "charged": data['charged'],
-            "drained": data['drained']
-        }
-        battery_data.append(day_battery)
 
     # sort by date in calendar order
     battery_data.sort(key=lambda x: datetime.datetime.strptime(x['date'], '%Y-%m-%d'))
