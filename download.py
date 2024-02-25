@@ -10,6 +10,7 @@ import pandas as pd
 dotenv.load_dotenv()
 
 
+# ratings are beginning of day ratings
 def get_lichess_ratings(username, start_date, end_date, game_type='Blitz', save=False):
     save_path = f"data/daily_ratings.json"
     if os.path.exists(save_path):
@@ -27,13 +28,16 @@ def get_lichess_ratings(username, start_date, end_date, game_type='Blitz', save=
             points = datum['points']
             for rating_data in points:
                 year, month, day, rating = rating_data
-                date = str(datetime.date(year, month + 1, day))
+                date = datetime.date(year, month + 1, day)
+
+                rating_delta = rating - prev_rating if prev_rating is not None else 0
+
                 # limit date to being between start_date and end_date
-                if start_date <= datetime.date(year, month + 1, day) <= end_date:
+                if start_date <= date <= end_date:
                     data_formatted = {
-                        "date": date,
+                        "date": str(date),
                         "rating": rating,
-                        "rating_delta": rating - prev_rating if prev_rating is not None else None
+                        "rating_delta": rating_delta,
                     }
                     daily_ratings.append(data_formatted)
                 prev_rating = rating
@@ -62,8 +66,7 @@ def get_daily_stress(garmin, start_date, end_date, save=False):
         data = garmin.get_stress_data(date.isoformat())
         data_formatted = {
             "date": data['calendarDate'],
-            "stress_max": data['maxStressLevel'],
-            "stress_avg": data['avgStressLevel'],
+            "stress_avg": data['avgStressLevel']
         }
         daily_stress.append(data_formatted)
         time.sleep(0.2)
@@ -98,20 +101,15 @@ def get_body_battery(garmin, start_date, end_date, save=False):
 
                 battery_values = [datum[1] for datum in data['bodyBatteryValuesArray']]
                 if battery_values[0] is None:
-                    min_battery = None
                     max_battery = None
                 else:
-                    min_battery = min(battery_values)
                     max_battery = max(battery_values)
 
                 # convert to negative for drained
                 day_battery = {
                     "date": data['date'],
                     "battery_charged": data['charged'],
-                    "battery_drained": -data['drained'],
-                    "battery_delta": data['charged'] - data['drained'],
-                    "battery_min": min_battery,
-                    "battery_max": max_battery,
+                    "battery_max": max_battery
                 }
                 daily_battery.append(day_battery)
             time.sleep(0.1)
@@ -147,9 +145,6 @@ def get_sleep_score(garmin, start_date, end_date, save=False):
         data = {
             "date": data['dailySleepDTO']['calendarDate'],
             "sleep_stress": data['dailySleepDTO']['avgSleepStress'],
-            "light_percent": data['dailySleepDTO']['sleepScores']['lightPercentage']['value'],
-            "rem_percent": data['dailySleepDTO']['sleepScores']['remPercentage']['value'],
-            "deep_percent": data['dailySleepDTO']['sleepScores']['deepPercentage']['value'],
             "light_duration": data['dailySleepDTO']['lightSleepSeconds'],
             "rem_duration": data['dailySleepDTO']['remSleepSeconds'],
             "deep_duration": data['dailySleepDTO']['deepSleepSeconds'],
