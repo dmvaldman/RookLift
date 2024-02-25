@@ -1,9 +1,13 @@
 import requests
 import time
 import random
+import os
+import dotenv
 
-X_ACCESS_KEY = "$2a$10$Vm5SBIfh1mmTtT8lW1kFiuY2c2vmh1QrdmcskFKBYRYYOnpIwADN6"
-X_MASTER_KEY = "$2a$10$hknkGAz8HC03Co4o0ur76.CIBedxOQs3yMa1uqtrSDC/U9ISYqQL6"
+dotenv.load_dotenv()
+
+X_ACCESS_KEY = os.getenv('JSONBIN_ACCESS_KEY')
+X_MASTER_KEY = os.getenv('JSONBIN_MASTER_KEY')
 
 url = "https://api.jsonbin.io/v3/b/65cc1fd01f5677401f2ef548"
 
