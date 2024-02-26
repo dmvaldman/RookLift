@@ -4,8 +4,9 @@ import os
 import dotenv
 import time
 import json
-from garminconnect import Garmin
 import pandas as pd
+
+from garminconnect import Garmin
 
 dotenv.load_dotenv()
 
@@ -108,7 +109,7 @@ def get_body_battery(garmin, start_date, end_date, save=False):
                 # convert to negative for drained
                 day_battery = {
                     "date": data['date'],
-                    "battery_charged": data['charged'],
+                    # "battery_charged": data['charged'],
                     "battery_max": max_battery
                 }
                 daily_battery.append(day_battery)
@@ -149,6 +150,7 @@ def get_sleep_score(garmin, start_date, end_date, save=False):
             "rem_duration": data['dailySleepDTO']['remSleepSeconds'],
             "deep_duration": data['dailySleepDTO']['deepSleepSeconds'],
             "sleep_duration": data['dailySleepDTO']['sleepTimeSeconds'],
+            "sleep_score": data['dailySleepDTO']['sleepScores']['overall']['value']
         }
 
         daily_sleep_scores.append(data)
@@ -253,13 +255,11 @@ def signals_to_df(signals, save=False):
 
 
 if __name__ == "__main__":
-    lichess_username = "dmvaldman"
-    save = True
+    lichess_username = os.getenv("lichess_username")
+    garmin_email = os.getenv('garmin_email')
+    garmin_password = os.getenv('garmin_password')
 
-    email = os.getenv('garmin_email')
-    password = os.getenv('garmin_password')
-
-    garmin = Garmin(email, password)
+    garmin = Garmin(garmin_email, garmin_password)
     garmin.login()
 
-    signals_df = main(lichess_username, garmin, save=save)
+    signals_df = main(lichess_username, garmin, save=True)

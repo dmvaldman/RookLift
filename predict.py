@@ -4,6 +4,8 @@ import json
 import requests
 import datetime
 import numpy as np
+
+from create_model import load_model, predict, predict_probabilities
 from garminconnect import Garmin
 
 dotenv.load_dotenv()
@@ -50,19 +52,6 @@ def get_datapoints(date, username, garmin, column_names):
             values.append(metrics[column])
     return values, rating
 
-def predict(datapoints, intercept, coefficients):
-    return int(intercept + np.dot(coefficients, datapoints))
-
-def load_model():
-    with open('model/data.json', 'r') as f:
-        model_data = json.load(f)
-
-    intercept = model_data['intercept']
-    coefficients = np.array(model_data['coefficients'])
-    column_names = model_data['column_names']
-
-    return intercept, coefficients, column_names
-
 def compare_datapoints(datapoints, column_names):
     # load ranges
     with open('model/ranges.json', 'r') as f:
@@ -77,7 +66,7 @@ def compare_datapoints(datapoints, column_names):
             print(f"{feature} is below average")
 
 if __name__ == '__main__':
-    username = "dmvaldman"
+    username = os.getenv("lichess_username")
     email = os.getenv('garmin_email')
     password = os.getenv('garmin_password')
 
@@ -86,12 +75,12 @@ if __name__ == '__main__':
 
     today = datetime.date.today()
 
-    intercept, coefficients, column_names = load_model()
+    model, scaler, column_names = load_model()
     datapoints, rating = get_datapoints(today, username, garmin, column_names)
-    predicted_rating = predict(datapoints, intercept, coefficients)
+    level = predict_probabilities(datapoints, model, scaler)
 
-    if predicted_rating > rating:
-        print(f"Your predicted rating is {predicted_rating - rating} points higher than your current rating.")
-    else:
-        print(f"Your predicted rating is {rating - predicted_rating} points lower than your current rating.")
+    if level < .5:
         compare_datapoints(datapoints, column_names)
+    else:
+        print("You should play chess!")
+
