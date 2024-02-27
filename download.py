@@ -10,38 +10,36 @@ import pytz
 
 from datetime import timedelta
 from collections import defaultdict
-
 from garminconnect import Garmin
 
 dotenv.load_dotenv()
 
-timezone = 'US/Pacific'
-current_timezone = pytz.timezone(timezone)
-start_hour = 6
-
-def datetime_to_timestamp(dt):
+def datetime_to_timestamp(dt, timezone="US/Pacific"):
     # if dt is instance of Date, convert to Datetime at {start_hour}am
     if isinstance(dt, datetime.date):
-        dt = datetime.datetime.combine(dt, datetime.time(start_hour, 0, 1))
+        dt = datetime.datetime.combine(dt, datetime.time(0, 0, 1))
 
     # Ensure dt is timezone-aware. Convert it to the desired timezone without replacing tzinfo directly.
     if dt.tzinfo is None or dt.tzinfo.utcoffset(dt) is None:
         dt = pytz.utc.localize(dt)  # Localize as UTC if naive
+
+    current_timezone = pytz.timezone(timezone)
     datetime_local = dt.astimezone(current_timezone)
     timestamp = datetime_local.timestamp()
     timestamp_ms = int(timestamp * 1000)
     return timestamp_ms
 
-def timestamp_to_datetime(timestamp_ms):
+def timestamp_to_datetime(timestamp_ms, timezone="US/Pacific"):
     # Convert milliseconds to seconds for utcfromtimestamp and ensure it's in the correct timezone
     timestamp_seconds = timestamp_ms / 1000.0
     timestamp_datetime = datetime.datetime.utcfromtimestamp(timestamp_seconds)
+    current_timezone = pytz.timezone(timezone)
     timestamp_local = timestamp_datetime.replace(tzinfo=pytz.utc).astimezone(current_timezone)
     return timestamp_local
 
-def adjust_date_for_day_start(date, hour=start_hour):
+def adjust_date_for_day_start(date, start_hour=6):
     """Adjusts the datetime to the correct day considering the day starts at a specific hour."""
-    if date.hour < hour:
+    if date.hour < start_hour:
         # Consider it as the previous day
         return date - timedelta(days=1)
     return date
@@ -54,18 +52,20 @@ def get_lichess_ratings(username, start_date, end_date, game_type='Blitz', save=
         return daily_ratings
 
     perfType = game_type.lower()
+    timezone = "US/Pacific"
+    start_hour = 6 # 6am local time
 
     # convert start_date to epoch
-    since = datetime_to_timestamp(start_date)
-    until = datetime_to_timestamp(end_date)
+    since = datetime_to_timestamp(start_date, timezone=timezone)
+    until = datetime_to_timestamp(end_date, timezone=timezone)
     game_generator = lichess.api.user_games(username, perfType=perfType, rated=True, since=since, until=until)
 
     # loop through games and mark the user's rating in the beginning and end of each day
-    # beginning of day is 7am local time
+    # beginning of day is at start_hour
     ratings = []
     for game in game_generator:
         timestamp_ms = game['createdAt']
-        date = timestamp_to_datetime(timestamp_ms)
+        date = timestamp_to_datetime(timestamp_ms, timezone=timezone)
 
         if game['players']['white']['user']['name'] == username:
             rating_before = game['players']['white']['rating']
@@ -87,7 +87,7 @@ def get_lichess_ratings(username, start_date, end_date, game_type='Blitz', save=
     # Group by the adjusted date
     daily_ratings_dict = defaultdict(lambda: {"rating_before": None, "rating_after": None})
     for record in ratings:
-        adjusted_date = adjust_date_for_day_start(record["date"]).date()  # Ignoring time part after adjustment
+        adjusted_date = adjust_date_for_day_start(record["date"], start_hour=start_hour).date()  # Ignoring time part after adjustment
         if daily_ratings_dict[adjusted_date]["rating_before"] is None or record["date"].time() < daily_ratings_dict[adjusted_date]["date"].time():
             daily_ratings_dict[adjusted_date]["rating_before"] = record["rating_before"]
             daily_ratings_dict[adjusted_date]["date"] = record["date"]  # Storing the datetime for comparison
