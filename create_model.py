@@ -18,17 +18,20 @@ def analyze(df, plot=False):
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
     scaler = StandardScaler()
-    X_train_scaled = scaler.fit_transform(X_train)
-    X_test_scaled = scaler.transform(X_test)
+    # scaler = None
+
+    if scaler is not None:
+        X_train = scaler.fit_transform(X_train)
+        X_test = scaler.transform(X_test)
 
     # Initialize the logistic regression model
     model = LogisticRegression()
 
     # Fit the model
-    model.fit(X_train_scaled, y_train)
+    model.fit(X_train, y_train)
 
     # Predict on the testing set
-    y_pred = model.predict(X_test_scaled)
+    y_pred = model.predict(X_test)
     conf_matrix = confusion_matrix(y_test, y_pred)
 
     # Calculate the mean squared error
@@ -46,13 +49,16 @@ def preprocess(df):
     df = df.dropna(subset=['date'])
 
     # drop rows where rating is null
-    df = df.dropna(subset=['rating'])
+    df = df.dropna(subset=['rating_morning'])
 
-    # add column which is +1 if rating is higher than previous day's rating, -1 if lower
-    df['rating_bool'] = df['rating_delta'].apply(lambda x: 1 if x > 0 else -1)
+    # drop battery_max column
+    df = df.drop(['battery_max'], axis=1)
 
-    # drop rating_delta
-    df = df.drop(['rating_delta'], axis=1)
+    # add column `rating_bool` which is +1 if `rating_evening` column is higher than `rating_morning` column , -1 if lower
+    df['rating_bool'] = (df['rating_evening'] - df['rating_morning']).apply(lambda x: 1 if x >= 0 else -1)
+
+    # drop `rating_evening` column
+    df = df.drop(['rating_evening'], axis=1)
 
     # make date index
     df['date'] = pd.to_datetime(df['date'])
@@ -67,7 +73,7 @@ def good_baseline(df, save=False):
     high_performance_values = dict(df[df['rating_bool'] > 0].mean())
     low_performance_values = dict(df[df['rating_bool'] < 0].mean())
 
-    delete_columns = ['rating', 'rating_bool']
+    delete_columns = ['rating_morning', 'rating_bool']
     for column in delete_columns:
         del high_performance_values[column]
         del low_performance_values[column]
@@ -85,9 +91,14 @@ def good_baseline(df, save=False):
 def save_model(model, scaler, column_names):
     intercept = model.intercept_[0].tolist()
     coefficients = model.coef_[0].tolist()
-    scaler_mean = scaler.mean_.tolist()
-    scaler_std = scaler.scale_.tolist()
     classes = model.classes_.tolist()
+
+    if scaler is not None:
+        scaler_mean = scaler.mean_.tolist()
+        scaler_std = scaler.scale_.tolist()
+    else:
+        scaler_mean = None
+        scaler_std = None
 
     # save model
     with open('model/data.json', 'w') as f:
@@ -114,7 +125,7 @@ def load_model():
     model.coef_ = np.array(coefficients)
     model.classes_ = np.array(classes)
 
-    if 'scaler_mean' in model_data:
+    if 'scaler_mean' in model_data and model_data['scaler_mean'] is not None:
         scaler_mean = model_data['scaler_mean']
         scaler_std = model_data['scaler_std']
 
