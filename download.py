@@ -5,14 +5,108 @@ import dotenv
 import time
 import json
 import pandas as pd
+import lichess.api
+import pytz
+
+from datetime import timedelta
+from collections import defaultdict
 
 from garminconnect import Garmin
 
 dotenv.load_dotenv()
 
+timezone = 'US/Pacific'
+current_timezone = pytz.timezone(timezone)
+start_hour = 6
+
+def datetime_to_timestamp(dt):
+    # if dt is instance of Date, convert to Datetime at {start_hour}am
+    if isinstance(dt, datetime.date):
+        dt = datetime.datetime.combine(dt, datetime.time(start_hour, 0, 1))
+
+    # Ensure dt is timezone-aware. Convert it to the desired timezone without replacing tzinfo directly.
+    if dt.tzinfo is None or dt.tzinfo.utcoffset(dt) is None:
+        dt = pytz.utc.localize(dt)  # Localize as UTC if naive
+    datetime_local = dt.astimezone(current_timezone)
+    timestamp = datetime_local.timestamp()
+    timestamp_ms = int(timestamp * 1000)
+    return timestamp_ms
+
+def timestamp_to_datetime(timestamp_ms):
+    # Convert milliseconds to seconds for utcfromtimestamp and ensure it's in the correct timezone
+    timestamp_seconds = timestamp_ms / 1000.0
+    timestamp_datetime = datetime.datetime.utcfromtimestamp(timestamp_seconds)
+    timestamp_local = timestamp_datetime.replace(tzinfo=pytz.utc).astimezone(current_timezone)
+    return timestamp_local
+
+def adjust_date_for_day_start(date, hour=start_hour):
+    """Adjusts the datetime to the correct day considering the day starts at a specific hour."""
+    if date.hour < hour:
+        # Consider it as the previous day
+        return date - timedelta(days=1)
+    return date
+
+def get_lichess_ratings(username, start_date, end_date, game_type='Blitz', save=False):
+    save_path = f"data/daily_ratings.json"
+    if os.path.exists(save_path):
+        with open(save_path, "r") as f:
+            daily_ratings = json.load(f)
+        return daily_ratings
+
+    perfType = game_type.lower()
+
+    # convert start_date to epoch
+    since = datetime_to_timestamp(start_date)
+    until = datetime_to_timestamp(end_date)
+    game_generator = lichess.api.user_games(username, perfType=perfType, rated=True, since=since, until=until)
+
+    # loop through games and mark the user's rating in the beginning and end of each day
+    # beginning of day is 7am local time
+    ratings = []
+    for game in game_generator:
+        timestamp_ms = game['createdAt']
+        date = timestamp_to_datetime(timestamp_ms)
+
+        if game['players']['white']['user']['name'] == username:
+            rating_before = game['players']['white']['rating']
+            rating_after = rating_before + game['players']['white']['ratingDiff']
+        else:
+            rating_before = game['players']['black']['rating']
+            rating_after = rating_before + game['players']['black']['ratingDiff']
+
+        data_formatted = {
+            "date": date,
+            "rating_before": rating_before,
+            "rating_after": rating_after
+        }
+        ratings.append(data_formatted)
+
+    # sort by date
+    ratings.sort(key=lambda x: x['date'])
+
+    # Group by the adjusted date
+    daily_ratings_dict = defaultdict(lambda: {"rating_before": None, "rating_after": None})
+    for record in ratings:
+        adjusted_date = adjust_date_for_day_start(record["date"]).date()  # Ignoring time part after adjustment
+        if daily_ratings_dict[adjusted_date]["rating_before"] is None or record["date"].time() < daily_ratings_dict[adjusted_date]["date"].time():
+            daily_ratings_dict[adjusted_date]["rating_before"] = record["rating_before"]
+            daily_ratings_dict[adjusted_date]["date"] = record["date"]  # Storing the datetime for comparison
+        if daily_ratings_dict[adjusted_date]["rating_after"] is None or record["date"].time() >= daily_ratings_dict[adjusted_date]["date"].time():
+            daily_ratings_dict[adjusted_date]["rating_after"] = record["rating_after"]
+            daily_ratings_dict[adjusted_date]["date"] = record["date"]  # Storing the datetime for comparison
+
+    # Convert the defaultdict to a list of dictionaries
+    daily_ratings = [{"date": str(date), "rating_morning": data["rating_before"], "rating_evening": data["rating_after"]} for date, data in daily_ratings_dict.items()]
+
+    if save:
+        # save to data dir as json
+        with open(save_path, "w") as f:
+            json.dump(daily_ratings, f)
+
+    return daily_ratings
 
 # ratings are beginning of day ratings
-def get_lichess_ratings(username, start_date, end_date, game_type='Blitz', save=False):
+def get_lichess_ratings_old(username, start_date, end_date, game_type='Blitz', save=False):
     save_path = f"data/daily_ratings.json"
     if os.path.exists(save_path):
         with open(save_path, "r") as f:
@@ -218,7 +312,7 @@ def main(lichess_username, garmin, save=False):
 
     # start_date is max of dates from lichess and garmin
     start_date = date_garmin
-    end_date = datetime.date.today()
+    end_date = today
 
     daily_ratings = get_lichess_ratings(lichess_username, start_date, end_date, game_type=game_type, save=save)
     daily_battery = get_body_battery(garmin, start_date, end_date, save=save)
