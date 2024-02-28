@@ -44,9 +44,10 @@ def analyze(df, plot=False):
 
     return model, scaler, column_names
 
-def preprocess(df):
-    # drop rows where date is null
-    df = df.dropna(subset=['date'])
+def preprocess(df, save=False, save_path='data/fitness_signals_processed.csv'):
+    # drop rows where date is null if it's not the index
+    if 'date' in df.columns:
+        df = df.dropna(subset=['date'])
 
     # drop rows where rating is null
     df = df.dropna(subset=['rating_morning'])
@@ -60,16 +61,20 @@ def preprocess(df):
     # drop `rating_evening` column
     df = df.drop(['rating_evening'], axis=1)
 
-    # make date index
-    df['date'] = pd.to_datetime(df['date'])
-    df.set_index('date', inplace=True)
+    # make date index if not already
+    if 'date' in df.columns:
+        df['date'] = pd.to_datetime(df['date'])
+        df.set_index('date', inplace=True)
 
     # replace NaN values with means except in the rating_delta column
     df = df.apply(lambda x: x.fillna(x.mean()) if x.name != 'rating_bool' else x)
 
+    if save:
+        df.to_csv(save_path)
+
     return df
 
-def good_baseline(df, save=False):
+def good_baseline(df):
     high_performance_values = dict(df[df['rating_bool'] > 0].mean())
     low_performance_values = dict(df[df['rating_bool'] < 0].mean())
 
@@ -81,14 +86,10 @@ def good_baseline(df, save=False):
     # combine dicts into one, turning entries into a list
     ranges = {k: [low_performance_values[k], high_performance_values[k]] for k in low_performance_values}
 
-    if save:
-        with open('model/ranges.json', 'w') as f:
-            json.dump(ranges, f)
-
     return ranges
 
 
-def save_model(model, scaler, column_names):
+def save_model(model, scaler, column_names, save_path='data/model_data.json'):
     intercept = model.intercept_[0].tolist()
     coefficients = model.coef_[0].tolist()
     classes = model.classes_.tolist()
@@ -101,8 +102,9 @@ def save_model(model, scaler, column_names):
         scaler_std = None
 
     # save model
-    with open('model/data.json', 'w') as f:
+    with open(save_path, 'w') as f:
         json.dump({
+            'type': type(model).__name__,
             'intercept': intercept,
             'coefficients': coefficients,
             'classes': classes,
@@ -111,16 +113,23 @@ def save_model(model, scaler, column_names):
             'scaler_std': scaler_std
         }, f)
 
-def load_model():
-    with open('model/data.json', 'r') as f:
+def load_model(path='data/model_data.json'):
+    with open(path, 'r') as f:
         model_data = json.load(f)
 
+    type = model_data['type']
     intercept = model_data['intercept']
     coefficients = model_data['coefficients']
     classes = model_data['classes']
     column_names = model_data['column_names']
 
-    model = LogisticRegression()
+    if type == 'LinearRegression':
+        model = LinearRegression()
+    elif type == 'LogisticRegression':
+        model = LogisticRegression()
+    else:
+        raise ValueError("Model type must be either LinearRegression or LogisticRegression")
+
     model.intercept_ = np.array(intercept)
     model.coef_ = np.array(coefficients)
     model.classes_ = np.array(classes)
@@ -139,7 +148,7 @@ def load_model():
 
 def predict(datapoints, model, scaler=None):
     if scaler is not None:
-        datapoints = scaler.transform([datapoints])
+        datapoints = scaler.transform([datapoints])[0]
     return model.predict(datapoints)
 
 def sigmoid(z):
@@ -147,7 +156,7 @@ def sigmoid(z):
 
 def predict_probabilities(datapoints, model, scaler=None):
     if scaler is not None:
-        datapoints = scaler.transform([datapoints])
+        datapoints = scaler.transform([datapoints])[0]
 
     if isinstance(model, LogisticRegression):
         # compute manually
@@ -161,14 +170,26 @@ def predict_probabilities(datapoints, model, scaler=None):
     else:
         raise ValueError("Model must be either LogisticRegression or LinearRegression")
 
+def create_model(df, save=False, save_path='data/model_data.json'):
+    model, scaler, column_names = analyze(df, plot=True)
+
+    if save:
+        save_model(model, scaler, column_names, save_path=save_path)
+
+    ranges = good_baseline(df, save=save)
+
+    return model, scaler, column_names, ranges
+
 
 if __name__ == '__main__':
+    save = True
     df = pd.read_csv(f"data/fitness_signals.csv")
-    df = preprocess(df)
-
-    # save df to csv
-    df.to_csv(f"data/fitness_signals_processed.csv")
+    df = preprocess(df, save=save, save_path="data/fitness_signals_processed.csv")
 
     model, scaler, column_names = analyze(df, plot=True)
-    save_model(model, scaler, column_names)
-    ranges = good_baseline(df, save=True)
+    ranges = good_baseline(df)
+
+    if save:
+        save_model(model, scaler, column_names, save_path='data/modal_data.json')
+        with open('data/model_ranges.json', 'w') as f:
+            json.dump(ranges, f)
