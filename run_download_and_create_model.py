@@ -41,7 +41,8 @@ def download_and_create():
         with open(save_path_baseline, 'w') as f:
             json.dump(ranges, f)
 
-    vol.commit()
+    if not is_local:
+        vol.commit()
 
 if __name__ == '__main__':
     download_and_create.local()

@@ -159,12 +159,9 @@ def predict_probabilities(datapoints, model, scaler=None):
         datapoints = scaler.transform([datapoints])[0]
 
     if isinstance(model, LogisticRegression):
-        # compute manually
         z = np.dot(datapoints, model.coef_) + model.intercept_
-        prob_positive_class = sigmoid(z)
-        return 2 * prob_positive_class - 1
+        return sigmoid(z)
     elif isinstance(model, LinearRegression):
-        # compute manually
         z = np.dot(datapoints, model.coef_) + model.intercept_
         return z
     else:

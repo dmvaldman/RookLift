@@ -196,11 +196,8 @@ def get_body_battery(garmin, start_date, end_date, save=False, save_dir="data"):
                 if data['charged'] is None and data['drained'] is None:
                     continue
 
-                battery_values = [datum[1] for datum in data['bodyBatteryValuesArray']]
-                if battery_values[0] is None:
-                    max_battery = None
-                else:
-                    max_battery = max(battery_values)
+                battery_values = [datum[1] for datum in data['bodyBatteryValuesArray'] if datum[1] is not None]
+                max_battery = max(battery_values) if battery_values else None
 
                 # convert to negative for drained
                 day_battery = {

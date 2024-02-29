@@ -7,7 +7,6 @@ import pytz
 
 from create_model import load_model, predict_probabilities
 from garminconnect import Garmin
-
 from common import stub, image, secrets, vol, is_local, Cron
 
 dotenv.load_dotenv()
@@ -83,7 +82,8 @@ def predict():
     model_path = os.path.join(data_dir, 'model_data.json')
     ranges_path = os.path.join(data_dir, 'model_ranges.json')
 
-    vol.resolve()
+    if not is_local:
+        vol.resolve()
 
     username = os.getenv("lichess_username")
     email = os.getenv('garmin_email')
