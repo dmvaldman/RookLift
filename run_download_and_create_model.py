@@ -1,10 +1,13 @@
 import json
 import os
+import logging
 from garminconnect import Garmin
 from common import stub, image, secrets, vol, is_local, Cron
 
 from download import download
 from create_model import save_model, good_baseline, analyze, preprocess
+
+logging.basicConfig(level=logging.INFO)
 
 # Runs every Monday at 5am PT
 @stub.function(

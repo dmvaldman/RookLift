@@ -123,7 +123,7 @@ def send_to_jsbin(level, metrics):
     X_ACCESS_KEY = os.getenv('JSONBIN_ACCESS_KEY')
     X_MASTER_KEY = os.getenv('JSONBIN_MASTER_KEY')
 
-    url = "https://api.jsonbin.io/v3/b/65cc1fd01f5677401f2ef548"
+    url = os.getenv('JSONBIN_URL')
 
     headers = {
         "X-Master-Key": X_MASTER_KEY,
