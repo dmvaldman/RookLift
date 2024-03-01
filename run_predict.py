@@ -26,8 +26,10 @@ def get_garmin_metrics(garmin, date):
     stress_data = garmin.get_stress_data(date.isoformat())
     sleep_data = garmin.get_sleep_data(date.isoformat())
 
-    battery_values = [datum[1] for datum in body_battery_data['bodyBatteryValuesArray']]
-    max_battery = max(battery_values)
+    battery_values = [datum[1] for datum in body_battery_data['bodyBatteryValuesArray'] if datum[1] is not None]
+    max_battery = max(battery_values) if battery_values else None
+
+    print('Sleep data:', sleep_data['dailySleepDTO'])
 
     metrics = {
         "sleep_stress": sleep_data['dailySleepDTO']['avgSleepStress'],
