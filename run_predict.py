@@ -66,8 +66,15 @@ def compare_datapoints(datapoints, column_names, ranges):
         elif value > high:
             above_average_metrics.append(feature)
 
-    str = "Metrics above average:\n" + "\n".join(above_average_metrics) + "\n\n" + "Metrics below average:\n" + "\n".join(below_average_metrics)
-    return str
+    # replace _ with spaces and capitalize first letter
+    above_average_metrics = [feature.replace('_', ' ').capitalize() for feature in above_average_metrics]
+    below_average_metrics = [feature.replace('_', ' ').capitalize() for feature in below_average_metrics]
+
+    # turn into string
+    poor_metrics = '\n'.join(below_average_metrics)
+    good_metrics = '\n'.join(above_average_metrics)
+    metrics_str = f"You did well on:\n{good_metrics}\n\nBut poor on:\n{poor_metrics}"
+    return metrics_str
 
 # 0 */2 * * * runs every 2 hrs
 # 0 14 * * * runs at 7am PT once a day
@@ -104,12 +111,11 @@ def predict():
     with open(ranges_path, 'r') as f:
         ranges = json.load(f)
 
-    compare_str = compare_datapoints(datapoints, column_names, ranges)
-    level_str = "You should take a break" if level < .5 else "You should play chess!"
+    metrics = compare_datapoints(datapoints, column_names, ranges)
 
-    send_to_jsbin(level, level_str, compare_str)
+    send_to_jsbin(level, metrics)
 
-def send_to_jsbin(level, level_str, compare_str):
+def send_to_jsbin(level, metrics):
     X_ACCESS_KEY = os.getenv('JSONBIN_ACCESS_KEY')
     X_MASTER_KEY = os.getenv('JSONBIN_MASTER_KEY')
 
@@ -123,8 +129,7 @@ def send_to_jsbin(level, level_str, compare_str):
 
     data = {
         "level": level,
-        "advice": level_str,
-        "compare": compare_str
+        "metrics": metrics
     }
 
     response = requests.put(url, headers=headers, json=data)

@@ -46,9 +46,9 @@ def adjust_date_for_day_start(date, start_hour=6):
         return date - timedelta(days=1)
     return date
 
-def get_lichess_ratings(username, start_date, end_date, game_type='Blitz', save=False, save_dir="data"):
+def get_lichess_ratings(username, start_date, end_date, game_type='Blitz', save=False, save_dir="data", force=False):
     save_path = os.path.join(save_dir, "daily_ratings.json")
-    if os.path.exists(save_path):
+    if not force and os.path.exists(save_path):
         with open(save_path, "r") as f:
             daily_ratings = json.load(f)
         return daily_ratings
@@ -108,9 +108,9 @@ def get_lichess_ratings(username, start_date, end_date, game_type='Blitz', save=
     return daily_ratings
 
 # ratings are beginning of day ratings
-def get_lichess_ratings_old(username, start_date, end_date, game_type='Blitz', save=False, save_dir="data"):
+def get_lichess_ratings_old(username, start_date, end_date, game_type='Blitz', save=False, save_dir="data", force=False):
     save_path = os.path.join(save_dir, "daily_ratings.json")
-    if os.path.exists(save_path):
+    if not force and os.path.exists(save_path):
         with open(save_path, "r") as f:
             daily_battery = json.load(f)
         return daily_battery
@@ -149,9 +149,9 @@ def get_lichess_ratings_old(username, start_date, end_date, game_type='Blitz', s
 
     return daily_ratings
 
-def get_daily_stress(garmin, start_date, end_date, save=False, save_dir="data"):
+def get_daily_stress(garmin, start_date, end_date, save=False, save_dir="data", force=False):
     save_path = os.path.join(save_dir, "daily_stress.json")
-    if os.path.exists(save_path):
+    if not force and os.path.exists(save_path):
         with open(save_path, "r") as f:
             daily_battery = json.load(f)
         return daily_battery
@@ -178,9 +178,9 @@ def get_daily_stress(garmin, start_date, end_date, save=False, save_dir="data"):
 
     return daily_stress
 
-def get_body_battery(garmin, start_date, end_date, save=False, save_dir="data"):
+def get_body_battery(garmin, start_date, end_date, save=False, save_dir="data", force=False):
     save_path = os.path.join(save_dir, "daily_battery.json")
-    if os.path.exists(save_path):
+    if not force and os.path.exists(save_path):
         with open(save_path, "r") as f:
             daily_battery = json.load(f)
         return daily_battery
@@ -220,9 +220,9 @@ def get_body_battery(garmin, start_date, end_date, save=False, save_dir="data"):
 
     return daily_battery
 
-def get_sleep_score(garmin, start_date, end_date, save=False, save_dir="data"):
+def get_sleep_score(garmin, start_date, end_date, save=False, save_dir="data", force=False):
     save_path = os.path.join(save_dir, "daily_sleep.json")
-    if os.path.exists(save_path):
+    if not force and os.path.exists(save_path):
         with open(save_path, "r") as f:
             daily_battery = json.load(f)
         return daily_battery
@@ -319,7 +319,7 @@ def signals_to_df(signals):
 
     return df_pivoted
 
-def download(lichess_username, garmin, save=False, save_dir="data", save_path="data/fitness_signals.csv"):
+def download(lichess_username, garmin, save=False, save_dir="data", save_path="data/fitness_signals.csv", force=False):
     today = datetime.date.today()
 
     # find earliest date with data for both lichess and garmin
@@ -332,10 +332,10 @@ def download(lichess_username, garmin, save=False, save_dir="data", save_path="d
     start_date = date_garmin
     end_date = today
 
-    daily_ratings = get_lichess_ratings(lichess_username, start_date, end_date, game_type=game_type, save=save, save_dir=save_dir)
-    daily_battery = get_body_battery(garmin, start_date, end_date, save=save, save_dir=save_dir)
-    daily_stress = get_daily_stress(garmin, start_date, end_date, save=save, save_dir=save_dir)
-    daily_sleep = get_sleep_score(garmin, start_date, end_date, save=save, save_dir=save_dir)
+    daily_ratings = get_lichess_ratings(lichess_username, start_date, end_date, game_type=game_type, save=save, save_dir=save_dir, force=force)
+    daily_battery = get_body_battery(garmin, start_date, end_date, save=save, save_dir=save_dir, force=force)
+    daily_stress = get_daily_stress(garmin, start_date, end_date, save=save, save_dir=save_dir, force=force)
+    daily_sleep = get_sleep_score(garmin, start_date, end_date, save=save, save_dir=save_dir, force=force)
 
     signals = [daily_ratings, daily_battery, daily_stress, daily_sleep]
 
@@ -349,6 +349,7 @@ def download(lichess_username, garmin, save=False, save_dir="data", save_path="d
 if __name__ == '__main__':
     save_dir = "data"
     save = True
+    force = True
     save_path = os.path.join(save_dir, "fitness_signals.csv")
 
     lichess_username = os.getenv("lichess_username")
@@ -358,4 +359,4 @@ if __name__ == '__main__':
     garmin = Garmin(garmin_email, garmin_password)
     garmin.login()
 
-    signals_df = download(lichess_username, garmin, save=save, save_dir=save_dir, save_path=save_path)
+    signals_df = download(lichess_username, garmin, save=save, save_dir=save_dir, save_path=save_path, force=force)
