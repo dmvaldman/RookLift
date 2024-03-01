@@ -4,11 +4,13 @@ import json
 import requests
 import datetime
 import pytz
+import logging
 
 from create_model import load_model, predict_probabilities
 from garminconnect import Garmin
 from common import stub, image, secrets, vol, is_local, Cron
 
+logging.basicConfig(level=logging.INFO)
 dotenv.load_dotenv()
 
 def get_chess_rating(username):
@@ -29,7 +31,7 @@ def get_garmin_metrics(garmin, date):
     battery_values = [datum[1] for datum in body_battery_data['bodyBatteryValuesArray'] if datum[1] is not None]
     max_battery = max(battery_values) if battery_values else None
 
-    print('Sleep data:', sleep_data['dailySleepDTO'])
+    logging.debug(f"Dictionary: {json.dumps(sleep_data['dailySleepDTO'], indent=2)}")
 
     metrics = {
         "sleep_stress": sleep_data['dailySleepDTO']['avgSleepStress'],
