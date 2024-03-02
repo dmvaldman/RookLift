@@ -56,7 +56,7 @@ def preprocess(df, save=False, save_path='data/fitness_signals_processed.csv'):
     df = df.drop(['battery_max'], axis=1)
 
     # add column `rating_bool` which is +1 if `rating_evening` column is higher than `rating_morning` column , -1 if lower
-    df['rating_bool'] = (df['rating_evening'] - df['rating_morning']).apply(lambda x: 1 if x >= 0 else -1)
+    df['rating_bool'] = (df['rating_evening'] - df['rating_morning']).shift(1).apply(lambda x: 1 if x > 0 else -1)
 
     # drop `rating_evening` column
     df = df.drop(['rating_evening'], axis=1)
