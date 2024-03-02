@@ -31,7 +31,8 @@ def get_garmin_metrics(garmin, date):
     battery_values = [datum[1] for datum in body_battery_data['bodyBatteryValuesArray'] if datum[1] is not None]
     max_battery = max(battery_values) if battery_values else None
 
-    logging.debug(f"Dictionary: {json.dumps(sleep_data['dailySleepDTO'], indent=2)}")
+    # logging.debug(f"Dictionary: {json.dumps(sleep_data['dailySleepDTO'], indent=2)}")
+    print(f"Dictionary: {json.dumps(sleep_data['dailySleepDTO'], indent=2)}")
 
     metrics = {
         "sleep_stress": sleep_data['dailySleepDTO']['avgSleepStress'],
@@ -57,28 +58,27 @@ def get_datapoints(date, username, garmin, column_names):
             values.append(metrics[column])
     return values
 
-def compare_datapoints(datapoints, column_names, ranges):
-    above_average_metrics = []
-    below_average_metrics = []
-    for i, (feature, value) in enumerate(zip(column_names, datapoints)):
+def compare_datapoints(datapoints, column_names, ranges, importances):
+    metrics = []
+    for feature, value, importance in zip(column_names, datapoints, importances):
         # skip 'rating'
         if feature == 'rating_morning':
             continue
+
         low, high = ranges[feature]
-        if value < low:
-            below_average_metrics.append(feature)
-        elif value > high:
-            above_average_metrics.append(feature)
 
-    # replace _ with spaces and capitalize first letter
-    above_average_metrics = [feature.replace('_', ' ').capitalize() for feature in above_average_metrics]
-    below_average_metrics = [feature.replace('_', ' ').capitalize() for feature in below_average_metrics]
+        level = (value - low) / (high - low)
+        if importance < 0:
+            level *= -1
 
-    # turn into string
-    poor_metrics = '\n'.join(below_average_metrics)
-    good_metrics = '\n'.join(above_average_metrics)
-    metrics_str = f"You did well on:\n{good_metrics}\n\nBut poor on:\n{poor_metrics}"
-    return metrics_str
+        # replace _ with space and capitalize first letter of feature
+        feature = feature.replace('_', ' ').capitalize()
+
+        metrics.append((feature, {"importance": importance, "level": level}))
+
+    # sort by importance, descending
+    metrics.sort(key=lambda x: abs(x[1]['importance']), reverse=True)
+    return metrics
 
 # 0 */2 * * * runs every 2 hrs
 # 0 14 * * * runs at 7am PT once a day
@@ -107,7 +107,7 @@ def predict():
     current_timezone = pytz.timezone('US/Pacific')
     date = datetime.datetime.now(current_timezone).date()
 
-    model, scaler, column_names = load_model(model_path)
+    model, scaler, column_names, importances = load_model(model_path)
     datapoints = get_datapoints(date, username, garmin, column_names)
     level = predict_probabilities(datapoints, model, scaler)
 
@@ -115,7 +115,7 @@ def predict():
     with open(ranges_path, 'r') as f:
         ranges = json.load(f)
 
-    metrics = compare_datapoints(datapoints, column_names, ranges)
+    metrics = compare_datapoints(datapoints, column_names, ranges, importances)
 
     send_to_jsbin(level, metrics)
 

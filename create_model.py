@@ -75,19 +75,20 @@ def preprocess(df, save=False, save_path='data/fitness_signals_processed.csv'):
     return df
 
 def good_baseline(df):
-    high_performance_values = dict(df[df['rating_bool'] > 0].mean())
-    low_performance_values = dict(df[df['rating_bool'] < 0].mean())
+    df_good = df[df['rating_bool'] > 0]
+    # top quantile of df values
+    range_high = df_good.quantile(0.75)
+    # bottom quartile of df values
+    range_low = df_good.quantile(0.25)
 
     delete_columns = ['rating_morning', 'rating_bool']
     for column in delete_columns:
-        del high_performance_values[column]
-        del low_performance_values[column]
+        del range_high[column]
+        del range_low[column]
 
-    # combine dicts into one, turning entries into a list
-    ranges = {k: [low_performance_values[k], high_performance_values[k]] for k in low_performance_values}
-
+    # combine into one dict, looping through column names of df (note first column is the index)
+    ranges = {column: [range_low[column], range_high[column]] for column in dict(range_low)}
     return ranges
-
 
 def save_model(model, scaler, column_names, save_path='data/model_data.json'):
     intercept = model.intercept_[0].tolist()
@@ -144,7 +145,7 @@ def load_model(path='data/model_data.json'):
     else:
         scaler = None
 
-    return model, scaler, column_names
+    return model, scaler, column_names, coefficients
 
 def predict(datapoints, model, scaler=None):
     if scaler is not None:
