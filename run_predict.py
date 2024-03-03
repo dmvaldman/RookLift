@@ -123,7 +123,6 @@ def predict():
         ranges = json.load(f)
 
     metrics = compare_datapoints(datapoints, column_names, ranges, importances)
-    level = .15
     send_to_jsbin(level, metrics)
 
 def send_to_jsbin(level, metrics):
