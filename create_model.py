@@ -225,10 +225,10 @@ def create_model(df, save=False, save_path='data/model_data.json'):
 if __name__ == '__main__':
     save = True
     num_days_lag = 0 # whether to add lagged featured to the model. currently `predict.py` doesn't support it
-    # model_type = 'LogisticRegression'
+    model_type = 'LogisticRegression'
     # model_type = 'RandomForest'
     # model_type = 'XGBoost'
-    model_type = 'SVC'
+    # model_type = 'SVC'
 
     df = pd.read_csv(f"data/fitness_signals.csv")
     df = preprocess(df, save=save, save_path="data/fitness_signals_processed.csv")
