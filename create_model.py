@@ -4,18 +4,25 @@ import numpy as np
 
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression, LogisticRegression
-from sklearn.metrics import accuracy_score, confusion_matrix
+from sklearn.metrics import accuracy_score, confusion_matrix, precision_score, recall_score, f1_score
 from sklearn.preprocessing import StandardScaler
+from sklearn.ensemble import RandomForestClassifier
+from xgboost import XGBClassifier
+from sklearn.svm import SVC
 
-def analyze(df, plot=False):
+
+def analyze(df, model_type="LogisiticRegression", num_days_lag=0):
     # Target variable is "rating_delta" and "rating" from previous day
+    if num_days_lag > 0:
+        df = create_lagged_features(df, num_days=num_days_lag)
+
     X = df.drop(['rating_bool'], axis=1)
-    y = df['rating_bool']
+    y = df['rating_bool'].map({-1: 0, 1: 1})
 
     # get names of columns of X
     column_names = list(X.columns.values)
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)
 
     scaler = StandardScaler()
     # scaler = None
@@ -25,7 +32,18 @@ def analyze(df, plot=False):
         X_test = scaler.transform(X_test)
 
     # Initialize the logistic regression model
-    model = LogisticRegression()
+    if model_type == 'LogisticRegression':
+        model = LogisticRegression(random_state=42)
+    elif model_type == 'RandomForest':
+        model = RandomForestClassifier(random_state=42)
+    elif model_type == 'XGBoost':
+        model = XGBClassifier(use_label_encoder=False, eval_metric='logloss', random_state=42)
+    elif model_type == 'SVC':
+        model = SVC(kernel='linear', random_state=42)
+    else:
+        raise ValueError("Model type must be either LogisticRegression, RandomForest, XGBoost, or SVC")
+
+    print(f"Creating a {model_type} model.\n")
 
     # Fit the model
     model.fit(X_train, y_train)
@@ -34,15 +52,35 @@ def analyze(df, plot=False):
     y_pred = model.predict(X_test)
     conf_matrix = confusion_matrix(y_test, y_pred)
 
-    # Calculate the mean squared error
-    accuracy = accuracy_score(y_test, y_pred)
-    print(f"Accuracy: {accuracy}")
-    print(f'Confusion Matrix:\n{conf_matrix}')
+    # Calculate model performance
+    accuracy_rf = accuracy_score(y_test, y_pred)
+    precision_rf = precision_score(y_test, y_pred, zero_division=0)
+    recall_rf = recall_score(y_test, y_pred)
+    f1_rf = f1_score(y_test, y_pred)
 
-    feature_importance = pd.DataFrame(model.coef_[0], index=X.columns, columns=['Coefficient']).sort_values(by='Coefficient', ascending=False)
-    print(feature_importance)
+    if model_type in ['LogisticRegression', 'SVC']:
+        feature_importance = pd.DataFrame(model.coef_[0], index=X.columns, columns=['Coefficient']).sort_values(by='Coefficient', ascending=False)
+    elif model_type in ['RandomForest', 'XGBoost']:
+        feature_importance = pd.DataFrame(model.feature_importances_, index=X.columns, columns=['Importance']).sort_values(by='Importance', ascending=False)
+
+    print('Model performance:\n')
+    print(f"Accuracy: {accuracy_rf}")
+    print(f"Precision: {precision_rf}")
+    print(f"Recall: {recall_rf}")
+    print(f"F1: {f1_rf}")
+    print(f"Confusion matrix:\n{conf_matrix}")
+    print(f"Feature importance:\n{feature_importance}")
 
     return model, scaler, column_names
+
+def create_lagged_features(df, num_days=2):
+    lagged_df = df.copy()
+    feature_columns = df.columns.difference(['rating_bool', 'date', 'rating_morning'])
+    for col in feature_columns:
+        for lag in range(1, num_days + 1):
+            lagged_df[f'{col}_lag_{lag}'] = df[col].shift(lag)
+    lagged_df = lagged_df.dropna()
+    return lagged_df
 
 def preprocess(df, save=False, save_path='data/fitness_signals_processed.csv'):
     # drop rows where date is null if it's not the index
@@ -91,6 +129,10 @@ def good_baseline(df):
     return ranges
 
 def save_model(model, scaler, column_names, save_path='data/model_data.json'):
+    if isinstance(model, XGBClassifier) or isinstance(model, RandomForestClassifier):
+        print("Saving this type of model is not supported yet.")
+        return
+
     intercept = model.intercept_[0].tolist()
     coefficients = model.coef_[0].tolist()
     classes = model.classes_.tolist()
@@ -124,10 +166,11 @@ def load_model(path='data/model_data.json'):
     classes = model_data['classes']
     column_names = model_data['column_names']
 
-    if type == 'LinearRegression':
-        model = LinearRegression()
-    elif type == 'LogisticRegression':
+    if type == 'LogisticRegression':
         model = LogisticRegression()
+    elif type in ['RandomForest', 'XGBoost', 'SVC']:
+        print("Loading this model not supported yet.")
+        return None, None, None, None
     else:
         raise ValueError("Model type must be either LinearRegression or LogisticRegression")
 
@@ -169,7 +212,7 @@ def predict_probabilities(datapoints, model, scaler=None):
         raise ValueError("Model must be either LogisticRegression or LinearRegression")
 
 def create_model(df, save=False, save_path='data/model_data.json'):
-    model, scaler, column_names = analyze(df, plot=True)
+    model, scaler, column_names = analyze(df)
 
     if save:
         save_model(model, scaler, column_names, save_path=save_path)
@@ -181,13 +224,25 @@ def create_model(df, save=False, save_path='data/model_data.json'):
 
 if __name__ == '__main__':
     save = True
+    num_days_lag = 0 # whether to add lagged featured to the model. currently `predict.py` doesn't support it
+    # model_type = 'LogisticRegression'
+    # model_type = 'RandomForest'
+    # model_type = 'XGBoost'
+    model_type = 'SVC'
+
     df = pd.read_csv(f"data/fitness_signals.csv")
     df = preprocess(df, save=save, save_path="data/fitness_signals_processed.csv")
 
-    model, scaler, column_names = analyze(df, plot=True)
+    print(f"Number of datapoints: {len(df)}")
+
+    model, scaler, column_names = analyze(df, num_days_lag=num_days_lag, model_type=model_type)
     ranges = good_baseline(df)
 
     if save:
-        save_model(model, scaler, column_names, save_path='data/modal_data.json')
+        save_model(model, scaler, column_names, save_path='data/model_data.json')
         with open('data/model_ranges.json', 'w') as f:
             json.dump(ranges, f)
+
+        # test loading
+        if model_type == 'LogisticRegression':
+            model, scaler, column_names, coefficients = load_model()

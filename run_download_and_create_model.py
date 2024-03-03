@@ -18,7 +18,7 @@ logging.basicConfig(level=logging.INFO)
 )
 def download_and_create():
     save = True
-    plot = False
+    model_type = "LogisticRegression"
 
     save_dir = "data" if is_local else "/data"
     save_path_df = save_dir + "/fitness_signals.csv"
@@ -36,7 +36,7 @@ def download_and_create():
     df = download(lichess_username, garmin, save=save, save_dir=save_dir, save_path=save_path_df)
     df = preprocess(df, save=save, save_path=save_path_df_processed)
 
-    model, scaler, column_names = analyze(df, plot=plot)
+    model, scaler, column_names = analyze(df, model_type=model_type)
     ranges = good_baseline(df)
 
     if save:
