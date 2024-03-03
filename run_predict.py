@@ -31,8 +31,15 @@ def get_garmin_metrics(garmin, date):
     battery_values = [datum[1] for datum in body_battery_data['bodyBatteryValuesArray'] if datum[1] is not None]
     max_battery = max(battery_values) if battery_values else None
 
-    # logging.debug(f"Dictionary: {json.dumps(sleep_data['dailySleepDTO'], indent=2)}")
-    print(f"Dictionary: {json.dumps(sleep_data['dailySleepDTO'], indent=2)}")
+    # When user is still sleeping this will be None
+    if sleep_data['dailySleepDTO']['id'] is None:
+        print(f"Sleep Data: {json.dumps(sleep_data, indent=2)}")
+        print(f"Stress Data: {json.dumps(stress_data, indent=2)}")
+        print(f"Body Battery Data: {json.dumps(body_battery_data, indent=2)}")
+        raise ValueError("User is still sleeping. Cannot get sleep data.")
+
+        # use prev day's sleep data
+        # sleep_data = garmin.get_sleep_data((date - datetime.timedelta(days=1)).isoformat())
 
     metrics = {
         "sleep_stress": sleep_data['dailySleepDTO']['avgSleepStress'],
