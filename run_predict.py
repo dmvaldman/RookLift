@@ -6,6 +6,7 @@ import datetime
 import pytz
 import logging
 
+from download import download_range
 from create_model import load_model, predict_probabilities
 from garminconnect import Garmin
 from common import stub, image, secrets, vol, is_local, Cron
@@ -24,34 +25,8 @@ def get_chess_rating(username):
             return last_rating
 
 def get_garmin_metrics(garmin, date):
-    body_battery_data = garmin.get_body_battery(date.isoformat())[0]
-    stress_data = garmin.get_stress_data(date.isoformat())
-    sleep_data = garmin.get_sleep_data(date.isoformat())
-
-    battery_values = [datum[1] for datum in body_battery_data['bodyBatteryValuesArray'] if datum[1] is not None]
-    max_battery = max(battery_values) if battery_values else None
-
-    # When user is still sleeping this will be None
-    if sleep_data['dailySleepDTO']['id'] is None:
-        print(f"Sleep Data: {json.dumps(sleep_data, indent=2)}")
-        print(f"Stress Data: {json.dumps(stress_data, indent=2)}")
-        print(f"Body Battery Data: {json.dumps(body_battery_data, indent=2)}")
-        raise ValueError("User is still sleeping. Cannot get sleep data.")
-
-        # use prev day's sleep data
-        # sleep_data = garmin.get_sleep_data((date - datetime.timedelta(days=1)).isoformat())
-
-    metrics = {
-        "sleep_stress": sleep_data['dailySleepDTO']['avgSleepStress'],
-        "light_duration": sleep_data['dailySleepDTO']['lightSleepSeconds'],
-        "rem_duration": sleep_data['dailySleepDTO']['remSleepSeconds'],
-        "deep_duration": sleep_data['dailySleepDTO']['deepSleepSeconds'],
-        "sleep_duration": sleep_data['dailySleepDTO']['sleepTimeSeconds'],
-        "sleep_score": sleep_data['dailySleepDTO']['sleepScores']['overall']['value'],
-        "battery_max": max_battery,
-        "stress_avg": stress_data['avgStressLevel']
-    }
-    return metrics
+    metrics = download_range(garmin, date, date, save=False, force=True)
+    return metrics.iloc[0].to_dict()
 
 def get_datapoints(date, username, garmin, column_names):
     rating = get_chess_rating(username)

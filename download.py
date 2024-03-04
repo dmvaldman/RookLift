@@ -158,7 +158,7 @@ def get_daily_stress(garmin, start_date, end_date, save=False, save_dir="data", 
 
     # loop through days between start_date and end_date
     daily_stress = []
-    for day in range((end_date - start_date).days):
+    for day in range((end_date - start_date).days + 1):
         date = start_date + datetime.timedelta(days=day)
         data = garmin.get_stress_data(date.isoformat())
         data_formatted = {
@@ -187,7 +187,7 @@ def get_daily_summary(garmin, start_date, end_date, save=False, save_dir="data",
 
     # loop through days between start_date and end_date
     daily_summary = []
-    for day in range((end_date - start_date).days):
+    for day in range((end_date - start_date).days + 1):
         date = start_date + datetime.timedelta(days=day)
         data = garmin.get_user_summary(date.isoformat())
 
@@ -225,30 +225,35 @@ def get_body_battery(garmin, start_date, end_date, save=False, save_dir="data", 
             daily_battery = json.load(f)
         return daily_battery
 
+    def get_body_battery_chunk(start, end):
+        body_battery = garmin.get_body_battery(start.isoformat(), end.isoformat())
+        values = []
+        for data in body_battery:
+            if data['charged'] is None and data['drained'] is None:
+                continue
+
+            battery_values = [datum[1] for datum in data['bodyBatteryValuesArray'] if datum[1] is not None]
+            max_battery = max(battery_values) if battery_values else None
+
+            # convert to negative for drained
+            day_battery = {
+                "date": data['date'],
+                # "battery_charged": data['charged'],
+                "battery_max": max_battery
+            }
+            values.append(day_battery)
+        return values
+
     # if start_date is more than 30 days behind end_date, batch into 30-day chunks and combine
     daily_battery = []
     if (end_date - start_date).days > 30:
         for day in range((end_date - start_date).days // 30 + 1):
             start = start_date + datetime.timedelta(days=30 * day)
             end = min(start_date + datetime.timedelta(days=30 * (day + 1)), end_date)
-            body_battery = garmin.get_body_battery(start.isoformat(), end.isoformat())
-            for data in body_battery:
-                if data['charged'] is None and data['drained'] is None:
-                    continue
-
-                battery_values = [datum[1] for datum in data['bodyBatteryValuesArray'] if datum[1] is not None]
-                max_battery = max(battery_values) if battery_values else None
-
-                # convert to negative for drained
-                day_battery = {
-                    "date": data['date'],
-                    # "battery_charged": data['charged'],
-                    "battery_max": max_battery
-                }
-                daily_battery.append(day_battery)
+            daily_battery.extend(get_body_battery_chunk(start, end))
             time.sleep(0.1)
     else:
-        body_battery = garmin.get_body_battery(start_date.isoformat(), end_date.isoformat())
+        daily_battery = get_body_battery_chunk(start_date, end_date)
 
     # sort by date in calendar order
     daily_battery.sort(key=lambda x: datetime.datetime.strptime(x['date'], '%Y-%m-%d'))
@@ -269,9 +274,9 @@ def get_sleep_score(garmin, start_date, end_date, save=False, save_dir="data", f
 
     # loop through days between startdate and today
     daily_sleep_scores = []
-    for day in range((end_date - start_date).days):
+    for day in range((end_date - start_date).days + 1):
         day = start_date + datetime.timedelta(days=day)
-        data = garmin.get_personal_record(day.isoformat())
+        data = garmin.get_sleep_data(day.isoformat())
 
         if 'sleepScores' not in data['dailySleepDTO']:
             continue
@@ -308,32 +313,30 @@ def get_activities(garmin, start_date, end_date, save=False, save_dir="data", fo
             daily_activies = json.load(f)
         return daily_activies
 
+    def get_activities_chunk(start, end):
+        activities = garmin.get_activities_by_date(start.isoformat(), end.isoformat())
+        values = []
+        activities = garmin.get_activities_by_date(start.isoformat(), end.isoformat())
+        for data in activities:
+            start_time = data['startTimeLocal'] #YYYY-MM-DD HH:MM:SS
+            date = start_time.split(' ')[0]
+            # convert to negative for drained
+            day_activities = {
+                "date": date,
+                "activity_calories": data['calories']
+            }
+            values.append(day_activities)
+        return values
+
     daily_activities = []
     if (end_date - start_date).days > 30:
         for day in range((end_date - start_date).days // 30 + 1):
             start = start_date + datetime.timedelta(days=30 * day)
             end = min(start_date + datetime.timedelta(days=30 * (day + 1)), end_date)
-            activities = garmin.get_activities_by_date(start.isoformat(), end.isoformat())
-            for data in activities:
-                start_time = data['startTimeLocal'] #YYYY-MM-DD HH:MM:SS
-                date = start_time.split(' ')[0]
-                # convert to negative for drained
-                day_activities = {
-                    "date": date,
-                    "activity_calories": data['calories']
-                }
-                daily_activities.append(day_activities)
+            daily_activities.extend(get_activities_chunk(start, end))
             time.sleep(0.1)
     else:
-        activities = garmin.get_body_battery(start_date.isoformat(), end_date.isoformat())
-        for data in activities:
-            start_time = data['startTimeLocal'] #YYYY-MM-DD HH:MM:SS
-            date = start_time.split(' ')[0]
-            day_activities = {
-                "date": date,
-                "activity_calories": data['calories']
-            }
-            daily_activities.append(day_activities)
+        daily_activities = get_activities_chunk(start_date, end_date)
 
     if save:
         # save to data dir as json
@@ -404,7 +407,7 @@ def signals_to_df(signals):
 
     return df_pivoted
 
-def download(lichess_username, garmin, save=False, save_dir="data", save_path="data/fitness_signals.csv", force=False):
+def download(lichess_username, garmin, save=False, save_path="data/fitness_signals.csv", save_dir="data", force=False):
     today = datetime.date.today()
 
     # find earliest date with data for both lichess and garmin
@@ -417,19 +420,27 @@ def download(lichess_username, garmin, save=False, save_dir="data", save_path="d
     start_date = date_garmin
     end_date = today
 
+    df = download_range(lichess_username, game_type, garmin, start_date, end_date, save=save, save_dir=save_dir, force=force)
+
+    if save:
+        df.to_csv(save_path)
+
+    return df
+
+def download_range(garmin, start_date, end_date, lichess_username=None, game_type=None, save=False, save_dir="data", force=False):
     daily_summary = get_daily_summary(garmin, start_date, end_date, save=save, save_dir=save_dir, force=force)
-    daily_ratings = get_lichess_ratings(lichess_username, start_date, end_date, game_type=game_type, save=save, save_dir=save_dir, force=force)
     daily_battery = get_body_battery(garmin, start_date, end_date, save=save, save_dir=save_dir, force=force)
     daily_stress = get_daily_stress(garmin, start_date, end_date, save=save, save_dir=save_dir, force=force)
     daily_sleep = get_sleep_score(garmin, start_date, end_date, save=save, save_dir=save_dir, force=force)
     daily_activities = get_activities(garmin, start_date, end_date, save=save, save_dir=save_dir, force=force)
 
-    signals = [daily_ratings, daily_battery, daily_stress, daily_sleep, daily_summary, daily_activities]
+    signals = [daily_battery, daily_stress, daily_sleep, daily_summary, daily_activities]
+
+    if lichess_username:
+        daily_ratings = get_lichess_ratings(lichess_username, start_date, end_date, game_type=game_type, save=save, save_dir=save_dir, force=force)
+        signals.append(daily_ratings)
 
     df = signals_to_df(signals)
-
-    if save:
-        df.to_csv(save_path)
 
     return df
 
