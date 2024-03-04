@@ -22,7 +22,7 @@ def analyze(df, model_type="LogisiticRegression", num_days_lag=0):
     # get names of columns of X
     column_names = list(X.columns.values)
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
     scaler = StandardScaler()
     # scaler = None
@@ -101,9 +101,17 @@ def preprocess(df, save=False, save_path='data/fitness_signals_processed.csv'):
     # drop `rating_evening` column
     df = df.drop(['rating_evening'], axis=1)
 
-    # process `activity_calories` column by replacing with trailing column of sum of previous 3 days, using 0 if missing
+    # process `activity_calories` column by replacing with trailing column of sum of previous 2 days, using 0 if missing
     df['activity_calories'] = df['activity_calories'].fillna(0)
-    df['activity_calories'] = df['activity_calories'].rolling(window=3).sum()
+    df['activity_calories'] = df['activity_calories'].rolling(window=2).sum()
+
+    # # process active_kilocalories column by replacing with trailing column of sum of previous 2 days, using 0 if missing
+    df['active_kilocalories'] = df['active_kilocalories'].fillna(0)
+    df['active_kilocalories'] = df['active_kilocalories'].rolling(window=2).sum()
+
+    # # process `active_seconds` column by replacing with trailing column of sum of previous 2 days, using 0 if missing
+    df['active_seconds'] = df['active_seconds'].fillna(0)
+    df['active_seconds'] = df['active_seconds'].rolling(window=2).sum()
 
     # make date index if not already
     if 'date' in df.columns:
@@ -235,9 +243,9 @@ if __name__ == '__main__':
     num_days_lag = 0 # whether to add lagged featured to the model. currently `predict.py` doesn't support it
     model_type = 'LogisticRegressionSparse'
     # model_type = 'LogisticRegression'
+    # model_type = 'SVC'
     # model_type = 'RandomForest'
     # model_type = 'XGBoost'
-    # model_type = 'SVC'
 
     df = pd.read_csv(f"data/fitness_signals.csv")
     df = preprocess(df, save=save, save_path="data/fitness_signals_processed.csv")
