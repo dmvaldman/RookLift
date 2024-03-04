@@ -123,9 +123,9 @@ def predict():
         ranges = json.load(f)
 
     metrics = compare_datapoints(datapoints, column_names, ranges, importances)
-    send_to_jsbin(level, metrics)
+    send_to_jsonbin(level, metrics)
 
-def send_to_jsbin(level, metrics):
+def send_to_jsonbin(level, metrics):
     X_ACCESS_KEY = os.getenv('JSONBIN_ACCESS_KEY')
     X_MASTER_KEY = os.getenv('JSONBIN_MASTER_KEY')
 

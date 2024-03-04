@@ -178,6 +178,46 @@ def get_daily_stress(garmin, start_date, end_date, save=False, save_dir="data", 
 
     return daily_stress
 
+def get_daily_summary(garmin, start_date, end_date, save=False, save_dir="data", force=False):
+    save_path = os.path.join(save_dir, "daily_summary.json")
+    if not force and os.path.exists(save_path):
+        with open(save_path, "r") as f:
+            daily_battery = json.load(f)
+        return daily_battery
+
+    # loop through days between start_date and end_date
+    daily_summary = []
+    for day in range((end_date - start_date).days):
+        date = start_date + datetime.timedelta(days=day)
+        data = garmin.get_user_summary(date.isoformat())
+
+        data_formatted = {
+            "date": data['calendarDate'],
+            "steps": data['totalSteps'],
+            "highly_active_seconds": data['highlyActiveSeconds'],
+            "active_seconds": data['activeSeconds'],
+            "sedentary_seconds": data['sedentarySeconds'],
+            "high_stress_duration": data['highStressDuration'],
+            "low_stress_duration": data['lowStressDuration'],
+            "body_battery_during_sleep": data['bodyBatteryDuringSleep'],
+            "min_avg_heart_rate": data['minAvgHeartRate'],
+            "active_kilocalories": data['activeKilocalories'],
+            "bodyBatteryLowestValue": data['bodyBatteryLowestValue'],
+            "bodyBatteryHighestValue": data['bodyBatteryHighestValue'],
+        }
+        daily_summary.append(data_formatted)
+        time.sleep(0.2)
+
+    # sort by date in calendar order
+    daily_summary.sort(key=lambda x: datetime.datetime.strptime(x['date'], '%Y-%m-%d'))
+
+    if save:
+        # save to data dir as json
+        with open(save_path, "w") as f:
+            json.dump(daily_summary, f)
+
+    return daily_summary
+
 def get_body_battery(garmin, start_date, end_date, save=False, save_dir="data", force=False):
     save_path = os.path.join(save_dir, "daily_battery.json")
     if not force and os.path.exists(save_path):
@@ -231,7 +271,7 @@ def get_sleep_score(garmin, start_date, end_date, save=False, save_dir="data", f
     daily_sleep_scores = []
     for day in range((end_date - start_date).days):
         day = start_date + datetime.timedelta(days=day)
-        data = garmin.get_sleep_data(day.isoformat())
+        data = garmin.get_personal_record(day.isoformat())
 
         if 'sleepScores' not in data['dailySleepDTO']:
             continue
@@ -243,7 +283,9 @@ def get_sleep_score(garmin, start_date, end_date, save=False, save_dir="data", f
             "rem_duration": data['dailySleepDTO']['remSleepSeconds'],
             "deep_duration": data['dailySleepDTO']['deepSleepSeconds'],
             "sleep_duration": data['dailySleepDTO']['sleepTimeSeconds'],
-            "sleep_score": data['dailySleepDTO']['sleepScores']['overall']['value']
+            "sleep_score": data['dailySleepDTO']['sleepScores']['overall']['value'],
+            "awake_duration": data['dailySleepDTO']['awakeSleepSeconds'],
+            "awake_count": data['dailySleepDTO']['awakeCount']
         }
 
         daily_sleep_scores.append(data)
@@ -258,6 +300,49 @@ def get_sleep_score(garmin, start_date, end_date, save=False, save_dir="data", f
             json.dump(daily_sleep_scores, f)
 
     return daily_sleep_scores
+
+def get_activities(garmin, start_date, end_date, save=False, save_dir="data", force=False):
+    save_path = os.path.join(save_dir, "daily_activities.json")
+    if not force and os.path.exists(save_path):
+        with open(save_path, "r") as f:
+            daily_activies = json.load(f)
+        return daily_activies
+
+    daily_activities = []
+    if (end_date - start_date).days > 30:
+        for day in range((end_date - start_date).days // 30 + 1):
+            start = start_date + datetime.timedelta(days=30 * day)
+            end = min(start_date + datetime.timedelta(days=30 * (day + 1)), end_date)
+            activities = garmin.get_activities_by_date(start.isoformat(), end.isoformat())
+            for data in activities:
+                start_time = data['startTimeLocal'] #YYYY-MM-DD HH:MM:SS
+                date = start_time.split(' ')[0]
+                # convert to negative for drained
+                day_activities = {
+                    "date": date,
+                    "activity_calories": data['calories']
+                }
+                daily_activities.append(day_activities)
+            time.sleep(0.1)
+    else:
+        activities = garmin.get_body_battery(start_date.isoformat(), end_date.isoformat())
+        for data in activities:
+            start_time = data['startTimeLocal'] #YYYY-MM-DD HH:MM:SS
+            date = start_time.split(' ')[0]
+            day_activities = {
+                "date": date,
+                "activity_calories": data['calories']
+            }
+            daily_activities.append(day_activities)
+
+    if save:
+        # save to data dir as json
+        with open(save_path, "w") as f:
+            json.dump(daily_activities, f)
+
+    # sort by date in calendar order
+    daily_activities.sort(key=lambda x: datetime.datetime.strptime(x['date'], '%Y-%m-%d'))
+    return daily_activities
 
 def find_earliest_record_date_and_game_type(lichess_username):
     url = f"https://lichess.org/api/user/{lichess_username}/rating-history"
@@ -332,12 +417,14 @@ def download(lichess_username, garmin, save=False, save_dir="data", save_path="d
     start_date = date_garmin
     end_date = today
 
+    daily_summary = get_daily_summary(garmin, start_date, end_date, save=save, save_dir=save_dir, force=force)
     daily_ratings = get_lichess_ratings(lichess_username, start_date, end_date, game_type=game_type, save=save, save_dir=save_dir, force=force)
     daily_battery = get_body_battery(garmin, start_date, end_date, save=save, save_dir=save_dir, force=force)
     daily_stress = get_daily_stress(garmin, start_date, end_date, save=save, save_dir=save_dir, force=force)
     daily_sleep = get_sleep_score(garmin, start_date, end_date, save=save, save_dir=save_dir, force=force)
+    daily_activities = get_activities(garmin, start_date, end_date, save=save, save_dir=save_dir, force=force)
 
-    signals = [daily_ratings, daily_battery, daily_stress, daily_sleep]
+    signals = [daily_ratings, daily_battery, daily_stress, daily_sleep, daily_summary, daily_activities]
 
     df = signals_to_df(signals)
 
@@ -349,7 +436,7 @@ def download(lichess_username, garmin, save=False, save_dir="data", save_path="d
 if __name__ == '__main__':
     save_dir = "data"
     save = True
-    force = True
+    force = False
     save_path = os.path.join(save_dir, "fitness_signals.csv")
 
     lichess_username = os.getenv("lichess_username")

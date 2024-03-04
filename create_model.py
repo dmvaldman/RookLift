@@ -32,7 +32,9 @@ def analyze(df, model_type="LogisiticRegression", num_days_lag=0):
         X_test = scaler.transform(X_test)
 
     # Initialize the logistic regression model
-    if model_type == 'LogisticRegression':
+    if model_type == 'LogisticRegressionSparse':
+        model = LogisticRegression(random_state=42, penalty='l1', solver='liblinear')
+    elif model_type == 'LogisticRegression':
         model = LogisticRegression(random_state=42)
     elif model_type == 'RandomForest':
         model = RandomForestClassifier(random_state=42)
@@ -58,7 +60,7 @@ def analyze(df, model_type="LogisiticRegression", num_days_lag=0):
     recall_rf = recall_score(y_test, y_pred)
     f1_rf = f1_score(y_test, y_pred)
 
-    if model_type in ['LogisticRegression', 'SVC']:
+    if model_type in ['LogisticRegression', 'LogisticRegressionSparse', 'SVC']:
         feature_importance = pd.DataFrame(model.coef_[0], index=X.columns, columns=['Coefficient']).sort_values(by='Coefficient', ascending=False)
     elif model_type in ['RandomForest', 'XGBoost']:
         feature_importance = pd.DataFrame(model.feature_importances_, index=X.columns, columns=['Importance']).sort_values(by='Importance', ascending=False)
@@ -98,6 +100,10 @@ def preprocess(df, save=False, save_path='data/fitness_signals_processed.csv'):
 
     # drop `rating_evening` column
     df = df.drop(['rating_evening'], axis=1)
+
+    # process `activity_calories` column by replacing with trailing column of sum of previous 3 days, using 0 if missing
+    df['activity_calories'] = df['activity_calories'].fillna(0)
+    df['activity_calories'] = df['activity_calories'].rolling(window=3).sum()
 
     # make date index if not already
     if 'date' in df.columns:
@@ -168,6 +174,8 @@ def load_model(path='data/model_data.json'):
 
     if type == 'LogisticRegression':
         model = LogisticRegression()
+    elif type == 'LogisticRegressionSparse':
+        model = LogisticRegression(penalty='l1', solver='liblinear')
     elif type in ['RandomForest', 'XGBoost', 'SVC']:
         print("Loading this model not supported yet.")
         return None, None, None, None
@@ -225,7 +233,8 @@ def create_model(df, save=False, save_path='data/model_data.json'):
 if __name__ == '__main__':
     save = True
     num_days_lag = 0 # whether to add lagged featured to the model. currently `predict.py` doesn't support it
-    model_type = 'LogisticRegression'
+    model_type = 'LogisticRegressionSparse'
+    # model_type = 'LogisticRegression'
     # model_type = 'RandomForest'
     # model_type = 'XGBoost'
     # model_type = 'SVC'
@@ -244,5 +253,5 @@ if __name__ == '__main__':
             json.dump(ranges, f)
 
         # test loading
-        if model_type == 'LogisticRegression':
+        if model_type == 'LogisticRegression' or model_type == 'LogisticRegressionSparse':
             model, scaler, column_names, coefficients = load_model()
