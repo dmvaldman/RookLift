@@ -12,7 +12,7 @@ from datetime import timedelta
 from collections import defaultdict
 from garminconnect import Garmin
 
-from common import stub, image, secrets
+from common import stub, image, secrets, is_local
 
 dotenv.load_dotenv()
 
@@ -445,9 +445,10 @@ def download_range(garmin, start_date, end_date, lichess_username=None, game_typ
     return df
 
 if __name__ == '__main__':
-    save_dir = "data"
     save = True
-    force = False
+    force = True
+
+    save_dir = "data" if is_local else "/data"
     save_path = os.path.join(save_dir, "fitness_signals.csv")
 
     lichess_username = os.getenv("lichess_username")
