@@ -11,11 +11,8 @@ from xgboost import XGBClassifier
 from sklearn.svm import SVC
 
 
-def analyze(df, model_type="LogisiticRegression", num_days_lag=0):
+def analyze(df, model_type="LogisiticRegression"):
     # Target variable is "rating_delta" and "rating" from previous day
-    if num_days_lag > 0:
-        df = create_lagged_features(df, num_days=num_days_lag)
-
     X = df.drop(['rating_bool'], axis=1)
     y = df['rating_bool'].map({-1: 0, 1: 1})
 
@@ -84,7 +81,7 @@ def create_lagged_features(df, num_days=2):
     lagged_df = lagged_df.dropna()
     return lagged_df
 
-def preprocess(df, save=False, save_path='data/fitness_signals_processed.csv'):
+def preprocess(df, aggregate_activity=False, num_days_lag=0, save=False, save_path='data/fitness_signals_processed.csv'):
     # drop rows where date is null if it's not the index
     if 'date' in df.columns:
         df = df.dropna(subset=['date'])
@@ -103,15 +100,15 @@ def preprocess(df, save=False, save_path='data/fitness_signals_processed.csv'):
 
     # process `activity_calories` column by replacing with trailing column of sum of previous 2 days, using 0 if missing
     df['activity_calories'] = df['activity_calories'].fillna(0)
-    df['activity_calories'] = df['activity_calories'].rolling(window=2).sum()
+    if aggregate_activity: df['activity_calories'] = df['activity_calories'].rolling(window=2).sum()
 
     # # process active_kilocalories column by replacing with trailing column of sum of previous 2 days, using 0 if missing
     df['active_kilocalories'] = df['active_kilocalories'].fillna(0)
-    df['active_kilocalories'] = df['active_kilocalories'].rolling(window=2).sum()
+    if aggregate_activity: df['active_kilocalories'] = df['active_kilocalories'].rolling(window=2).sum()
 
     # # process `active_seconds` column by replacing with trailing column of sum of previous 2 days, using 0 if missing
     df['active_seconds'] = df['active_seconds'].fillna(0)
-    df['active_seconds'] = df['active_seconds'].rolling(window=2).sum()
+    if aggregate_activity: df['active_seconds'] = df['active_seconds'].rolling(window=2).sum()
 
     # make date index if not already
     if 'date' in df.columns:
@@ -120,6 +117,10 @@ def preprocess(df, save=False, save_path='data/fitness_signals_processed.csv'):
 
     # replace NaN values with means except in the rating_delta column
     df = df.apply(lambda x: x.fillna(x.mean()) if x.name != 'rating_bool' else x)
+
+    # add lagged features
+    if num_days_lag > 0:
+        df = create_lagged_features(df, num_days=num_days_lag)
 
     if save:
         df.to_csv(save_path)
@@ -230,18 +231,25 @@ def predict_probabilities(datapoints, model, scaler=None):
 if __name__ == '__main__':
     save = True
     num_days_lag = 0 # whether to add lagged featured to the model. currently `predict.py` doesn't support it
-    # model_type = 'LogisticRegressionSparse'
-    model_type = 'LogisticRegression'
+    aggregate_activity = False # whether to aggregate activity data by summing previous N days
+
+    model_type = 'LogisticRegressionSparse'
+    # model_type = 'LogisticRegression'
     # model_type = 'SVC'
     # model_type = 'RandomForest'
     # model_type = 'XGBoost'
 
     df = pd.read_csv(f"data/fitness_signals.csv")
-    df = preprocess(df, save=save, save_path="data/fitness_signals_processed.csv")
+    df = preprocess(
+        df,
+        num_days_lag=num_days_lag,
+        aggregate_activity=aggregate_activity,
+        save=save,
+        save_path="data/fitness_signals_processed.csv")
 
     print(f"Number of datapoints: {len(df)}")
 
-    model, scaler, column_names = analyze(df, num_days_lag=num_days_lag, model_type=model_type)
+    model, scaler, column_names = analyze(df, model_type=model_type)
     ranges = good_baseline(df)
 
     if save:
