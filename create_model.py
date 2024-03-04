@@ -227,22 +227,11 @@ def predict_probabilities(datapoints, model, scaler=None):
     else:
         raise ValueError("Model must be either LogisticRegression or LinearRegression")
 
-def create_model(df, save=False, save_path='data/model_data.json'):
-    model, scaler, column_names = analyze(df)
-
-    if save:
-        save_model(model, scaler, column_names, save_path=save_path)
-
-    ranges = good_baseline(df, save=save)
-
-    return model, scaler, column_names, ranges
-
-
 if __name__ == '__main__':
     save = True
     num_days_lag = 0 # whether to add lagged featured to the model. currently `predict.py` doesn't support it
-    model_type = 'LogisticRegressionSparse'
-    # model_type = 'LogisticRegression'
+    # model_type = 'LogisticRegressionSparse'
+    model_type = 'LogisticRegression'
     # model_type = 'SVC'
     # model_type = 'RandomForest'
     # model_type = 'XGBoost'
