@@ -50,8 +50,11 @@ def compare_datapoints(datapoints, column_names, ranges, importances):
             continue
 
         low, high = ranges[feature]
-
         level = (value - low) / (high - low)
+
+        # Remove this line when we're confident about negative importance
+        importance = abs(importance)
+
         if importance < 0:
             # TODO: is this right?
             level = 1 - level
@@ -131,5 +134,5 @@ def send_to_jsonbin(level, metrics):
 
 if __name__ == '__main__':
     upload = True
-    classic=True
+    classic = True
     predict.local(upload=upload, classic=classic)
