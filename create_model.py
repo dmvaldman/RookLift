@@ -81,7 +81,12 @@ def create_lagged_features(df, num_days=2):
     lagged_df = lagged_df.dropna()
     return lagged_df
 
-def preprocess(df, aggregate_activity=False, num_days_lag=0, save=False, save_path='data/fitness_signals_processed.csv'):
+def preprocess(df, classic=False, aggregate_activity=False, num_days_lag=0, save=False, save_path='data/fitness_signals_processed.csv'):
+    # drop all rows except the classic rows
+    if classic:
+        classic_rows = ['rem_duration', 'light_duration', 'deep_duration', 'sleep_duration', 'sleep_score', 'sleep_stress', 'stress_avg', 'rating_morning', 'rating_evening', 'battery_max']
+        df = df[classic_rows]
+
     # drop rows where date is null if it's not the index
     if 'date' in df.columns:
         df = df.dropna(subset=['date'])
@@ -99,16 +104,19 @@ def preprocess(df, aggregate_activity=False, num_days_lag=0, save=False, save_pa
     df = df.drop(['rating_evening'], axis=1)
 
     # process `activity_calories` column by replacing with trailing column of sum of previous 2 days, using 0 if missing
-    df['activity_calories'] = df['activity_calories'].fillna(0)
-    if aggregate_activity: df['activity_calories'] = df['activity_calories'].rolling(window=2).sum()
+    if 'activity_calories' in df.columns:
+        df['activity_calories'] = df['activity_calories'].fillna(0)
+        if aggregate_activity: df['activity_calories'] = df['activity_calories'].rolling(window=2).sum()
 
     # # process active_kilocalories column by replacing with trailing column of sum of previous 2 days, using 0 if missing
-    df['active_kilocalories'] = df['active_kilocalories'].fillna(0)
-    if aggregate_activity: df['active_kilocalories'] = df['active_kilocalories'].rolling(window=2).sum()
+    if 'active_kilocalories' in df.columns:
+        df['active_kilocalories'] = df['active_kilocalories'].fillna(0)
+        if aggregate_activity: df['active_kilocalories'] = df['active_kilocalories'].rolling(window=2).sum()
 
     # # process `active_seconds` column by replacing with trailing column of sum of previous 2 days, using 0 if missing
-    df['active_seconds'] = df['active_seconds'].fillna(0)
-    if aggregate_activity: df['active_seconds'] = df['active_seconds'].rolling(window=2).sum()
+    if 'active_seconds' in df.columns:
+        df['active_seconds'] = df['active_seconds'].fillna(0)
+        if aggregate_activity: df['active_seconds'] = df['active_seconds'].rolling(window=2).sum()
 
     # make date index if not already
     if 'date' in df.columns:
@@ -158,6 +166,12 @@ def save_model(model, scaler, column_names, save_path='data/model_data.json'):
     else:
         scaler_mean = None
         scaler_std = None
+
+    # If LogisticRegressionSparse, remove coefficients that are 0 from coefficients and column_names and intercept
+    # if model_type == 'LogisticRegressionSparse':
+    #     thresh = 1e-6
+    #     column_names = [column_names[i] for i, c in enumerate(coefficients) if abs(c) > thresh]
+    #     coefficients = [coefficients for i, c in enumerate(coefficients) if abs(c) > thresh]
 
     # save model
     with open(save_path, 'w') as f:
@@ -232,9 +246,10 @@ if __name__ == '__main__':
     save = True
     num_days_lag = 0 # whether to add lagged featured to the model. currently `predict.py` doesn't support it
     aggregate_activity = False # whether to aggregate activity data by summing previous N days
+    classic = True
 
-    model_type = 'LogisticRegressionSparse'
-    # model_type = 'LogisticRegression'
+    # model_type = 'LogisticRegressionSparse'
+    model_type = 'LogisticRegression'
     # model_type = 'SVC'
     # model_type = 'RandomForest'
     # model_type = 'XGBoost'
@@ -242,6 +257,7 @@ if __name__ == '__main__':
     df = pd.read_csv(f"data/fitness_signals.csv")
     df = preprocess(
         df,
+        classic=classic,
         num_days_lag=num_days_lag,
         aggregate_activity=aggregate_activity,
         save=save,

@@ -70,7 +70,7 @@ def compare_datapoints(datapoints, column_names, ranges, importances):
         volumes={"/data": vol},
         schedule=Cron("0 */3 * * *")
     )
-def predict():
+def predict(upload=False):
     data_dir = 'data' if is_local else '/data'
     model_path = os.path.join(data_dir, 'model_data.json')
     ranges_path = os.path.join(data_dir, 'model_ranges.json')
@@ -98,7 +98,12 @@ def predict():
         ranges = json.load(f)
 
     metrics = compare_datapoints(datapoints, column_names, ranges, importances)
-    send_to_jsonbin(level, metrics)
+
+    print(f"Level: {level}")
+    print(f"Metrics:\n{json.dumps(metrics, indent=2)}")
+
+    if upload:
+        send_to_jsonbin(level, metrics)
 
 def send_to_jsonbin(level, metrics):
     X_ACCESS_KEY = os.getenv('JSONBIN_ACCESS_KEY')
@@ -122,4 +127,5 @@ def send_to_jsonbin(level, metrics):
     print('JSBIN PUT response: ', response_data)
 
 if __name__ == '__main__':
-    predict.local()
+    upload = True
+    predict.local(upload=upload)

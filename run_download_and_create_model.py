@@ -17,8 +17,11 @@ logging.basicConfig(level=logging.INFO)
     schedule=Cron("0 12 * * 1")
 )
 def download_and_create():
+    classic = True # original model features
     save = True
-    model_type = "LogisticRegression"
+    force = True # force save (overwrite)
+    model_type = 'LogisticRegression'
+    # model_type = 'LogisticRegressionSparse'
 
     save_dir = "data" if is_local else "/data"
     save_path_df = save_dir + "/fitness_signals.csv"
@@ -33,10 +36,10 @@ def download_and_create():
     garmin = Garmin(garmin_email, garmin_password)
     garmin.login()
 
-    df = download(lichess_username, garmin, save=save, save_dir=save_dir, save_path=save_path_df)
-    df = preprocess(df, save=save, save_path=save_path_df_processed)
+    df = download(lichess_username, garmin, save=save, save_dir=save_dir, save_path=save_path_df, force=force, classic=classic)
+    df = preprocess(df, classic=classic, num_days_lag=0, aggregate_activity=False, save=save, save_path=save_path_df_processed)
 
-    model, scaler, column_names = analyze(df, num_days_lag=0, model_type=model_type)
+    model, scaler, column_names = analyze(df, model_type=model_type)
     ranges = good_baseline(df)
 
     if save:
