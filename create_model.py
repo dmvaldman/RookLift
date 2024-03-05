@@ -81,27 +81,29 @@ def create_lagged_features(df, num_days=2):
     lagged_df = lagged_df.dropna()
     return lagged_df
 
-def preprocess(df, classic=False, aggregate_activity=False, num_days_lag=0, save=False, save_path='data/fitness_signals_processed.csv'):
+def preprocess(df, classic=False, aggregate_activity=False, include_rating_cols=True, num_days_lag=0, save=False, save_path='data/fitness_signals_processed.csv'):
     # drop all rows except the classic rows
     if classic:
-        classic_rows = ['rem_duration', 'light_duration', 'deep_duration', 'sleep_duration', 'sleep_score', 'sleep_stress', 'stress_avg', 'rating_morning', 'rating_evening', 'battery_max']
+        classic_rows = ['rem_duration', 'light_duration', 'deep_duration', 'sleep_duration', 'sleep_score', 'sleep_stress', 'stress_avg', 'battery_max']
+        if include_rating_cols:
+            classic_rows += ['rating_morning', 'rating_evening']
         df = df[classic_rows]
 
     # drop rows where date is null if it's not the index
     if 'date' in df.columns:
         df = df.dropna(subset=['date'])
 
-    # drop rows where rating is null
-    df = df.dropna(subset=['rating_morning'])
+    # not called when running `predict.py`
+    if include_rating_cols:
+        # drop rows where rating is null
+        df = df.dropna(subset=['rating_morning'])
+        # add column `rating_bool` which is +1 if `rating_evening` column is higher than `rating_morning` column , -1 if lower
+        df['rating_bool'] = (df['rating_evening'] - df['rating_morning']).shift(1).apply(lambda x: 1 if x > 0 else -1)
+        # drop `rating_evening` column
+        df = df.drop(['rating_evening'], axis=1)
 
     # drop battery_max column
     df = df.drop(['battery_max'], axis=1)
-
-    # add column `rating_bool` which is +1 if `rating_evening` column is higher than `rating_morning` column , -1 if lower
-    df['rating_bool'] = (df['rating_evening'] - df['rating_morning']).shift(1).apply(lambda x: 1 if x > 0 else -1)
-
-    # drop `rating_evening` column
-    df = df.drop(['rating_evening'], axis=1)
 
     # process `activity_calories` column by replacing with trailing column of sum of previous 2 days, using 0 if missing
     if 'activity_calories' in df.columns:

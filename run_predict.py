@@ -7,7 +7,7 @@ import pytz
 import logging
 
 from download import download_range
-from create_model import load_model, predict_probabilities
+from create_model import load_model, predict_probabilities, preprocess
 from garminconnect import Garmin
 from common import stub, image, secrets, vol, is_local, Cron
 
@@ -24,13 +24,15 @@ def get_chess_rating(username):
             last_rating = points[-1][3]
             return last_rating
 
-def get_garmin_metrics(garmin, date):
-    metrics = download_range(garmin, date, date, save=False, force=True)
-    return metrics.iloc[0].to_dict()
+def get_garmin_metrics(garmin, date, classic=True):
+    df = download_range(garmin, date, date, save=False, force=True)
+    df_processed = preprocess(df, classic=classic, include_rating_cols=False, num_days_lag=0, aggregate_activity=False, save=False)
+    metrics = df_processed.iloc[0].to_dict()
+    return metrics
 
-def get_datapoints(date, username, garmin, column_names):
+def get_datapoints(date, username, garmin, column_names, classic=True):
     rating = get_chess_rating(username)
-    metrics = get_garmin_metrics(garmin, date)
+    metrics = get_garmin_metrics(garmin, date, classic=classic)
 
     values = []
     for column in column_names:
@@ -70,7 +72,7 @@ def compare_datapoints(datapoints, column_names, ranges, importances):
         volumes={"/data": vol},
         schedule=Cron("0 */3 * * *")
     )
-def predict(upload=False):
+def predict(upload=False, classic=True):
     data_dir = 'data' if is_local else '/data'
     model_path = os.path.join(data_dir, 'model_data.json')
     ranges_path = os.path.join(data_dir, 'model_ranges.json')
@@ -90,7 +92,7 @@ def predict(upload=False):
     date = datetime.datetime.now(current_timezone).date()
 
     model, scaler, column_names, importances = load_model(model_path)
-    datapoints = get_datapoints(date, username, garmin, column_names)
+    datapoints = get_datapoints(date, username, garmin, column_names, classic=classic)
     level = predict_probabilities(datapoints, model, scaler)
 
     # load ranges
@@ -128,4 +130,5 @@ def send_to_jsonbin(level, metrics):
 
 if __name__ == '__main__':
     upload = True
-    predict.local(upload=upload)
+    classic=True
+    predict.local(upload=upload, classic=classic)
