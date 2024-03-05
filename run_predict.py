@@ -53,7 +53,8 @@ def compare_datapoints(datapoints, column_names, ranges, importances):
 
         level = (value - low) / (high - low)
         if importance < 0:
-            level *= -1
+            # TODO: is this right?
+            level = 1 - level
 
         # replace _ with space and capitalize first letter of feature
         feature = feature.replace('_', ' ').capitalize()
@@ -126,7 +127,7 @@ def send_to_jsonbin(level, metrics):
 
     response = requests.put(url, headers=headers, json=data)
     response_data = response.json()
-    print('JSBIN PUT response: ', response_data)
+    print('JSBIN PUT response:\n', json.dumps(response_data, indent=2))
 
 if __name__ == '__main__':
     upload = True

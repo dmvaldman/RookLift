@@ -45,7 +45,7 @@ def download_and_create():
     if save:
         save_model(model, scaler, column_names, save_path=save_path_model)
         with open(save_path_baseline, 'w') as f:
-            json.dump(ranges, f)
+            json.dump(ranges, f, indent=2)
 
     if not is_local:
         vol.commit()

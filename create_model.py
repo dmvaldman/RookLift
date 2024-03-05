@@ -273,7 +273,7 @@ if __name__ == '__main__':
     if save:
         save_model(model, scaler, column_names, save_path='data/model_data.json')
         with open('data/model_ranges.json', 'w') as f:
-            json.dump(ranges, f)
+            json.dump(ranges, f, indent=2)
 
         # test loading
         if model_type == 'LogisticRegression' or model_type == 'LogisticRegressionSparse':
