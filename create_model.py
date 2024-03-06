@@ -16,19 +16,17 @@ import matplotlib.pyplot as plt
 def analyze(df, model_type="LogisiticRegression", plot=False):
     # Target variable is "rating_delta" and "rating" from previous day
     X = df.drop(['rating_bool'], axis=1)
-    y = df['rating_bool'].map({-1: 0, 1: 1})
+    y = df['rating_bool']
 
-    # get names of columns of X
-    column_names = list(X.columns.values)
-
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    column_names = X.columns
 
     scaler = StandardScaler()
     # scaler = None
 
     if scaler is not None:
-        X_train = scaler.fit_transform(X_train)
-        X_test = scaler.transform(X_test)
+        X = scaler.fit_transform(X)
+
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
     # Initialize the logistic regression model
     if model_type == 'LogisticRegressionSparse':
@@ -63,9 +61,9 @@ def analyze(df, model_type="LogisiticRegression", plot=False):
     f1_rf = f1_score(y_test, y_pred)
 
     if model_type in ['LogisticRegression', 'LogisticRegressionSparse', 'SVC']:
-        feature_importance = pd.DataFrame(model.coef_[0], index=X.columns, columns=['Coefficient']).sort_values(by='Coefficient', ascending=False)
+        feature_importance = pd.DataFrame(model.coef_[0], index=column_names, columns=['Coefficient']).sort_values(by='Coefficient', ascending=False)
     elif model_type in ['RandomForest', 'XGBoost']:
-        feature_importance = pd.DataFrame(model.feature_importances_, index=X.columns, columns=['Importance']).sort_values(by='Importance', ascending=False)
+        feature_importance = pd.DataFrame(model.feature_importances_, index=column_names, columns=['Importance']).sort_values(by='Importance', ascending=False)
 
     print('Model performance:\n')
     print(f"Accuracy: {accuracy_rf}")
@@ -75,7 +73,7 @@ def analyze(df, model_type="LogisiticRegression", plot=False):
     print(f"Confusion matrix:\n{conf_matrix}")
     print(f"Feature importance:\n{feature_importance}")
 
-    return model, scaler, column_names
+    return model, scaler, column_names.to_list()
 
 # Function to perform cross-validation and plot learning curves
 def evaluate_model(model, X, y, cv=5, plot=False):
@@ -287,7 +285,7 @@ if __name__ == '__main__':
     save = True
     num_days_lag = 0 # whether to add lagged featured to the model. currently `predict.py` doesn't support it
     aggregate_activity = False # whether to aggregate activity data by summing previous N days
-    classic = True
+    classic = True # whether to use the original model features
     plot = False
 
     # model_type = 'LogisticRegressionSparse'

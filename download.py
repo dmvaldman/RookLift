@@ -500,7 +500,7 @@ def download_range(garmin, start_date, end_date, lichess_username=None, game_typ
 if __name__ == '__main__':
     save = True
     force = True
-    classic = False # original version that has fewer features
+    classic = True # original version that has fewer features
 
     save_dir = "data" if is_local else "/data"
     save_path = os.path.join(save_dir, "fitness_signals.csv")
