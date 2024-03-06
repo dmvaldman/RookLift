@@ -56,7 +56,6 @@ def compare_datapoints(datapoints, column_names, ranges, importances):
         importance = abs(importance)
 
         if importance < 0:
-            # TODO: is this right?
             level = 1 - level
 
         # replace _ with space and capitalize first letter of feature

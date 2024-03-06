@@ -39,7 +39,7 @@ def download_and_create():
     df = download(lichess_username, garmin, save=save, save_dir=save_dir, save_path=save_path_df, force=force, classic=classic)
     df = preprocess(df, classic=classic, include_rating_cols=True, num_days_lag=0, aggregate_activity=False, save=save, save_path=save_path_df_processed)
 
-    model, scaler, column_names = analyze(df, model_type=model_type)
+    model, scaler, column_names = analyze(df, model_type=model_type, plot=False)
     ranges = good_baseline(df)
 
     if save:

@@ -7,11 +7,13 @@ from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.metrics import accuracy_score, confusion_matrix, precision_score, recall_score, f1_score
 from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import cross_val_score, learning_curve
 from xgboost import XGBClassifier
 from sklearn.svm import SVC
+import matplotlib.pyplot as plt
 
 
-def analyze(df, model_type="LogisiticRegression"):
+def analyze(df, model_type="LogisiticRegression", plot=False):
     # Target variable is "rating_delta" and "rating" from previous day
     X = df.drop(['rating_bool'], axis=1)
     y = df['rating_bool'].map({-1: 0, 1: 1})
@@ -51,6 +53,9 @@ def analyze(df, model_type="LogisiticRegression"):
     y_pred = model.predict(X_test)
     conf_matrix = confusion_matrix(y_test, y_pred)
 
+    # Cross-validation scores
+    evaluate_model(model, X, y, cv=5, plot=plot)
+
     # Calculate model performance
     accuracy_rf = accuracy_score(y_test, y_pred)
     precision_rf = precision_score(y_test, y_pred, zero_division=0)
@@ -71,6 +76,40 @@ def analyze(df, model_type="LogisiticRegression"):
     print(f"Feature importance:\n{feature_importance}")
 
     return model, scaler, column_names
+
+# Function to perform cross-validation and plot learning curves
+def evaluate_model(model, X, y, cv=5, plot=False):
+    # Cross-validation scores
+    cv_scores = cross_val_score(model, X, y, cv=5)
+    print(f"Cross-Validation Scores: {cv_scores}")
+    print(f"Average CV Score: {cv_scores.mean()}")
+
+    if plot:
+        # Learning curves
+        train_sizes, train_scores, validation_scores = learning_curve(model, X, y, cv=cv, n_jobs=-1,
+                                                                    train_sizes=np.linspace(0.1, 1.0, 10))
+
+        # Calculate mean and standard deviation for training set scores
+        train_mean = np.mean(train_scores, axis=1)
+        train_std = np.std(train_scores, axis=1)
+
+        # Calculate mean and standard deviation for validation set scores
+        validation_mean = np.mean(validation_scores, axis=1)
+        validation_std = np.std(validation_scores, axis=1)
+
+        plt.figure(figsize=(10, 6))
+        plt.plot(train_sizes, train_mean, label="Training score", color="blue", marker='o')
+        plt.fill_between(train_sizes, train_mean - train_std, train_mean + train_std, color="blue", alpha=0.15)
+
+        plt.plot(train_sizes, validation_mean, label="Cross-validation score", color="green", marker='o')
+        plt.fill_between(train_sizes, validation_mean - validation_std, validation_mean + validation_std, color="green", alpha=0.15)
+
+        plt.title("Learning Curve")
+        plt.xlabel("Training Set Size")
+        plt.ylabel("Accuracy Score")
+        plt.legend(loc="best")
+        plt.grid()
+        plt.show()
 
 def create_lagged_features(df, num_days=2):
     lagged_df = df.copy()
@@ -249,6 +288,7 @@ if __name__ == '__main__':
     num_days_lag = 0 # whether to add lagged featured to the model. currently `predict.py` doesn't support it
     aggregate_activity = False # whether to aggregate activity data by summing previous N days
     classic = True
+    plot = False
 
     # model_type = 'LogisticRegressionSparse'
     model_type = 'LogisticRegression'
@@ -267,7 +307,7 @@ if __name__ == '__main__':
 
     print(f"Number of datapoints: {len(df)}")
 
-    model, scaler, column_names = analyze(df, model_type=model_type)
+    model, scaler, column_names = analyze(df, model_type=model_type, plot=plot)
     ranges = good_baseline(df)
 
     if save:
