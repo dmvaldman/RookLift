@@ -83,7 +83,7 @@ def compare_datapoints(datapoints, column_names, ranges, importances):
         metrics.append((feature, {"importance": importance_normalized, "level": level}))
 
     # sort by importance, descending
-    metrics.sort(key=lambda x: abs(x[1]['importance']), reverse=True)
+    metrics.sort(key=lambda x: x[1]['importance'], reverse=True)
     return metrics
 
 # 0 */3 * * * runs every 3 hrs
@@ -152,7 +152,7 @@ def send_to_jsonbin(level, metrics):
     print('JSBIN PUT response:\n', json.dumps(response_data, indent=2))
 
 if __name__ == '__main__':
-    upload = False
+    upload = True
     features = [
         # 'active_calories',
         'activity_calories',
