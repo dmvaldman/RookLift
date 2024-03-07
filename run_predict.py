@@ -25,7 +25,15 @@ def get_chess_rating(username):
             return last_rating
 
 def get_garmin_metrics(garmin, date, features=None):
-    df = download_range(garmin, date, date, save=False, force=True)
+    try:
+        df = download_range(garmin, date, date, save=False, force=True)
+    except Exception as e:
+        print(f"Error: {e}")
+        # use prev day if error
+        date = date - datetime.timedelta(days=1)
+        df = download_range(garmin, date, date, save=False, force=True)
+        return None
+
     df_processed = preprocess(df, features=features, include_rating_cols=False, num_days_lag=0, aggregate_activity=False, save=False)
     metrics = df_processed.iloc[0].to_dict()
     return metrics
