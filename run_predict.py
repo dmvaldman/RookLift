@@ -49,14 +49,16 @@ def compare_datapoints(datapoints, column_names, ranges, importances):
         if feature == 'rating_morning':
             continue
 
-        low, high = ranges[feature]
-        level = (value - low) / (high - low)
-
         # Remove this line when we're confident about negative importance
         importance = abs(importance)
 
-        if importance < 0:
-            level = 1 - level
+        low, high = ranges[feature]
+
+        # level between 0 and 1
+        level = (value - low) / (high - low)
+
+        # level between -.5 and .5 scaled by importance, then shifted back
+        level = importance * (level - 0.5) + 0.5
 
         # replace _ with space and capitalize first letter of feature
         feature = feature.replace('_', ' ').capitalize()
