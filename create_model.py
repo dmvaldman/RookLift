@@ -118,13 +118,13 @@ def create_lagged_features(df, num_days=2):
     lagged_df = lagged_df.dropna()
     return lagged_df
 
-def preprocess(df, classic=False, aggregate_activity=False, include_rating_cols=True, num_days_lag=0, save=False, save_path='data/fitness_signals_processed.csv'):
+def preprocess(df, features=None, aggregate_activity=False, include_rating_cols=True, num_days_lag=0, save=False, save_path='data/fitness_signals_processed.csv'):
     # drop all rows except the classic rows
-    if classic:
-        classic_rows = ['rem_duration', 'light_duration', 'deep_duration', 'sleep_duration', 'sleep_score', 'sleep_stress', 'stress_avg', 'battery_max']
+    if features is not None:
         if include_rating_cols:
-            classic_rows += ['rating_morning', 'rating_evening']
-        df = df[classic_rows]
+            features += ['rating_morning', 'rating_evening']
+        print('Avail Columns:', df.columns)
+        df = df[features]
 
     # drop rows where date is null if it's not the index
     if 'date' in df.columns:
@@ -138,9 +138,6 @@ def preprocess(df, classic=False, aggregate_activity=False, include_rating_cols=
         df['rating_bool'] = (df['rating_evening'] - df['rating_morning']).shift(1).apply(lambda x: 1 if x > 0 else -1)
         # drop `rating_evening` column
         df = df.drop(['rating_evening'], axis=1)
-
-    # drop battery_max column
-    df = df.drop(['battery_max'], axis=1)
 
     # process `activity_calories` column by replacing with trailing column of sum of previous 2 days, using 0 if missing
     if 'activity_calories' in df.columns:
@@ -162,7 +159,7 @@ def preprocess(df, classic=False, aggregate_activity=False, include_rating_cols=
         df['date'] = pd.to_datetime(df['date'])
         df.set_index('date', inplace=True)
 
-    # replace NaN values with means except in the rating_delta column
+    # replace NaN values with means except in the rating_bool column
     df = df.apply(lambda x: x.fillna(x.mean()) if x.name != 'rating_bool' else x)
 
     # add lagged features
@@ -285,8 +282,19 @@ if __name__ == '__main__':
     save = True
     num_days_lag = 0 # whether to add lagged featured to the model. currently `predict.py` doesn't support it
     aggregate_activity = False # whether to aggregate activity data by summing previous N days
-    classic = True # whether to use the original model features
     plot = False
+
+    features = [
+        'activity_calories',
+        'awake_duration',
+        'deep_duration',
+        'light_duration',
+        'rem_duration',
+        'sleep_duration',
+        'sleep_score',
+        'sleep_stress',
+        'stress_avg'
+    ]
 
     # model_type = 'LogisticRegressionSparse'
     model_type = 'LogisticRegression'
@@ -297,7 +305,7 @@ if __name__ == '__main__':
     df = pd.read_csv(f"data/fitness_signals.csv")
     df = preprocess(
         df,
-        classic=classic,
+        features=features,
         num_days_lag=num_days_lag,
         aggregate_activity=aggregate_activity,
         save=save,

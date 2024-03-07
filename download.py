@@ -457,7 +457,7 @@ def signals_to_df(signals):
 
     return df_pivoted
 
-def download(lichess_username, garmin, save=False, save_path="data/fitness_signals.csv", save_dir="data", force=False, classic=False):
+def download(lichess_username, garmin, save=False, save_path="data/fitness_signals.csv", save_dir="data", force=False):
     today = datetime.date.today()
 
     # find earliest date with data for both lichess and garmin
@@ -470,24 +470,22 @@ def download(lichess_username, garmin, save=False, save_path="data/fitness_signa
     start_date = date_garmin
     end_date = today
 
-    df = download_range(garmin, start_date, end_date, lichess_username=lichess_username, game_type=game_type, save=save, save_dir=save_dir, force=force, classic=classic)
+    df = download_range(garmin, start_date, end_date, lichess_username=lichess_username, game_type=game_type, save=save, save_dir=save_dir, force=force)
 
     if save:
         df.to_csv(save_path)
 
     return df
 
-def download_range(garmin, start_date, end_date, lichess_username=None, game_type=None, save=False, save_dir="data", force=False, classic=False):
+def download_range(garmin, start_date, end_date, lichess_username=None, game_type=None, save=False, save_dir="data", force=False):
     signals = []
 
     signals.append(get_body_battery(garmin, start_date, end_date, save=save, save_dir=save_dir, force=force))
     signals.append(get_daily_stress(garmin, start_date, end_date, save=save, save_dir=save_dir, force=force))
     signals.append(get_sleep_score(garmin, start_date, end_date, save=save, save_dir=save_dir, force=force))
     signals.append(get_activities(garmin, start_date, end_date, save=save, save_dir=save_dir, force=force))
-
-    if not classic:
-        signals.append(get_daily_summary(garmin, start_date, end_date, save=save, save_dir=save_dir, force=force))
-        signals.append(get_body_battery_during_sleep(garmin, start_date, end_date, save=save, save_dir=save_dir, force=force))
+    signals.append(get_daily_summary(garmin, start_date, end_date, save=save, save_dir=save_dir, force=force))
+    signals.append(get_body_battery_during_sleep(garmin, start_date, end_date, save=save, save_dir=save_dir, force=force))
 
     if lichess_username:
         daily_ratings = get_lichess_ratings(lichess_username, start_date, end_date, game_type=game_type, save=save, save_dir=save_dir, force=force)
@@ -500,7 +498,6 @@ def download_range(garmin, start_date, end_date, lichess_username=None, game_typ
 if __name__ == '__main__':
     save = True
     force = True
-    classic = True # original version that has fewer features
 
     save_dir = "data" if is_local else "/data"
     save_path = os.path.join(save_dir, "fitness_signals.csv")
@@ -512,4 +509,4 @@ if __name__ == '__main__':
     garmin = Garmin(garmin_email, garmin_password)
     garmin.login()
 
-    signals_df = download(lichess_username, garmin, save=save, save_dir=save_dir, save_path=save_path, force=force, classic=classic)
+    signals_df = download(lichess_username, garmin, save=save, save_dir=save_dir, save_path=save_path, force=force)

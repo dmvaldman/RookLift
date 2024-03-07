@@ -23,6 +23,18 @@ def download_and_create():
     model_type = 'LogisticRegression'
     # model_type = 'LogisticRegressionSparse'
 
+    features = [
+        'activity_calories',
+        'awake_duration',
+        'deep_duration',
+        'light_duration',
+        'rem_duration',
+        'sleep_duration',
+        'sleep_score',
+        'sleep_stress',
+        'stress_avg'
+    ]
+
     save_dir = "data" if is_local else "/data"
     save_path_df = save_dir + "/fitness_signals.csv"
     save_path_df_processed = save_dir + "/fitness_signals_processed.csv"
@@ -36,8 +48,8 @@ def download_and_create():
     garmin = Garmin(garmin_email, garmin_password)
     garmin.login()
 
-    df = download(lichess_username, garmin, save=save, save_dir=save_dir, save_path=save_path_df, force=force, classic=classic)
-    df = preprocess(df, classic=classic, include_rating_cols=True, num_days_lag=0, aggregate_activity=False, save=save, save_path=save_path_df_processed)
+    df = download(lichess_username, garmin, save=save, save_dir=save_dir, save_path=save_path_df, force=force, features=features)
+    df = preprocess(df, features=features, include_rating_cols=True, num_days_lag=0, aggregate_activity=False, save=save, save_path=save_path_df_processed)
 
     model, scaler, column_names = analyze(df, model_type=model_type, plot=False)
     ranges = good_baseline(df)
