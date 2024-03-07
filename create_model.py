@@ -174,9 +174,19 @@ def preprocess(df, features=None, aggregate_activity=False, include_rating_cols=
 def good_baseline(df):
     df_good = df[df['rating_bool'] > 0]
     # top quantile of df values
-    range_high = df_good.quantile(0.75)
+    range_high = df_good.quantile(0.80)
     # bottom quartile of df values
-    range_low = df_good.quantile(0.25)
+    range_low = df_good.quantile(0.20)
+
+    # hack for activity calories which are usually 0. take non-zero and do quartile of those
+    if 'activity_calories' in df.columns:
+        range_high['activity_calories'] = df_good['activity_calories'][df_good['activity_calories'] > 0].quantile(0.70)
+        range_low['activity_calories'] = 0
+
+    # lots of missing values so use tighter bounds
+    if 'body_battery_during_sleep' in df.columns:
+        range_high['body_battery_during_sleep'] = df_good['body_battery_during_sleep'][df_good['body_battery_during_sleep'] > 0].quantile(0.90)
+        range_low['body_battery_during_sleep'] = df_good['body_battery_during_sleep'][df_good['body_battery_during_sleep'] > 0].quantile(0.10)
 
     delete_columns = ['rating_morning', 'rating_bool']
     for column in delete_columns:

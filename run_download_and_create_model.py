@@ -17,7 +17,6 @@ logging.basicConfig(level=logging.INFO)
     schedule=Cron("0 12 * * 1")
 )
 def download_and_create():
-    classic = True # original model features
     save = True
     force = True # force save (overwrite)
     model_type = 'LogisticRegression'
@@ -55,7 +54,7 @@ def download_and_create():
     garmin = Garmin(garmin_email, garmin_password)
     garmin.login()
 
-    df = download(lichess_username, garmin, save=save, save_dir=save_dir, save_path=save_path_df, force=force, features=features)
+    df = download(lichess_username, garmin, save=save, save_dir=save_dir, save_path=save_path_df, force=force)
     df = preprocess(df, features=features, include_rating_cols=True, num_days_lag=0, aggregate_activity=False, save=save, save_path=save_path_df_processed)
 
     model, scaler, column_names = analyze(df, model_type=model_type, plot=False)
@@ -66,8 +65,8 @@ def download_and_create():
         with open(save_path_baseline, 'w') as f:
             json.dump(ranges, f, indent=2)
 
-    if not is_local:
-        vol.commit()
+        if not is_local:
+            vol.commit()
 
 if __name__ == '__main__':
     download_and_create.local()

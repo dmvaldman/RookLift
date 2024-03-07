@@ -373,6 +373,13 @@ def get_activities(garmin, start_date, end_date, save=False, save_dir="data", fo
                 }
                 values.append(day_activities)
 
+        # Can have no days which will remove the column from the DF, so hack to avoid that.
+        if not values:
+            values.append({
+                "date": start.isoformat(),
+                "activity_calories": 0
+            })
+
         return values
 
     daily_activities = []
