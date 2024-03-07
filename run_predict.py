@@ -56,7 +56,7 @@ def compare_datapoints(datapoints, column_names, ranges, importances):
     # max importance, ignoring `rating_morning` column index, and against absolute value of values
     rating_column_index = column_names.index('rating_morning')
     max_importance = -100
-    for i, importance in enumerate(importances):
+    for i, importance_normalized in enumerate(importances):
         if i == rating_column_index:
             continue
         if abs(importances[i]) > max_importance:
@@ -67,21 +67,20 @@ def compare_datapoints(datapoints, column_names, ranges, importances):
         if feature == 'rating_morning':
             continue
 
-        # Remove this line when we're confident about negative importance
-        importance = abs(importance) / max_importance
+        importance_normalized = importance / max_importance
 
         low, high = ranges[feature]
 
         # level between 0 and 1
         level = (value - low) / (high - low)
 
-        # level between -1 and 1 scaled by importance, then shifted back and rescaled
-        level = (importance * (2 * level - 1) + 1) / 2
+        # level between -1 and 1 scaled by importance, then shifted back and rescaled to [0, 1]
+        level = (importance_normalized * (2 * level - 1) + 1) / 2
 
         # replace _ with space and capitalize first letter of feature
         feature = feature.replace('_', ' ').capitalize()
 
-        metrics.append((feature, {"importance": importance, "level": level}))
+        metrics.append((feature, {"importance": importance_normalized, "level": level}))
 
     # sort by importance, descending
     metrics.sort(key=lambda x: abs(x[1]['importance']), reverse=True)
@@ -153,7 +152,7 @@ def send_to_jsonbin(level, metrics):
     print('JSBIN PUT response:\n', json.dumps(response_data, indent=2))
 
 if __name__ == '__main__':
-    upload = True
+    upload = False
     features = [
         # 'active_calories',
         'activity_calories',
