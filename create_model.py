@@ -192,9 +192,10 @@ def good_baseline(df):
         range_low['activity_calories'] = 0
 
     # lots of missing values so use tighter bounds
-    if 'body_battery_during_sleep' in df.columns:
-        range_high['body_battery_during_sleep'] = df_good['body_battery_during_sleep'][df_good['body_battery_during_sleep'] > 0].quantile(0.90)
-        range_low['body_battery_during_sleep'] = df_good['body_battery_during_sleep'][df_good['body_battery_during_sleep'] > 0].quantile(0.10)
+    if 'body_battery' in df.columns:
+        non_zeros_indices = df_good['body_battery'] > 0
+        range_high['body_battery'] = df_good['body_battery'][non_zeros_indices].quantile(0.90)
+        range_low['body_battery'] = df_good['body_battery'][non_zeros_indices].quantile(0.10)
 
     delete_columns = ['rating_morning', 'rating_bool']
     for column in delete_columns:

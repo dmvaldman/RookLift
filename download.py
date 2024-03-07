@@ -382,6 +382,10 @@ def get_activities(garmin, start_date, end_date, save=False, save_dir="data", fo
 
         return values
 
+    # decrement dates by 1 because we'll later increment by 1
+    start_date -= datetime.timedelta(days=1)
+    end_date -= datetime.timedelta(days=1)
+
     daily_activities = []
     if (end_date - start_date).days > 30:
         for day in range((end_date - start_date).days // 30 + 1):
