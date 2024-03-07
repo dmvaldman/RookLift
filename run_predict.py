@@ -144,4 +144,22 @@ def send_to_jsonbin(level, metrics):
 
 if __name__ == '__main__':
     upload = True
-    predict.local(upload=upload)
+    features = [
+        # 'active_calories',
+        'activity_calories',
+        # 'awake_duration',
+        # 'battery_max',
+        'body_battery_during_sleep',
+        'deep_duration',
+        'high_stress_duration',
+        'light_duration',
+        # 'low_stress_duration',
+        'rem_duration',
+        # 'sedentary_duration',
+        # 'sleep_duration',
+        # 'sleep_score',
+        # 'sleep_stress',
+        # 'steps',
+        'stress_avg'
+    ]
+    predict.local(upload=upload, features=features)

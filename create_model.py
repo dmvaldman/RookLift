@@ -284,15 +284,25 @@ if __name__ == '__main__':
     aggregate_activity = False # whether to aggregate activity data by summing previous N days
     plot = False
 
+    # For historical reasons
+    # classic features: ['activity_calories', 'awake_duration', 'deep_duration', 'light_duration', 'rem_duration', 'sleep_duration', 'sleep_score', 'sleep_stress', 'stress_avg']
+
     features = [
+        # 'active_calories',
         'activity_calories',
-        'awake_duration',
+        # 'awake_duration',
+        # 'battery_max',
+        'body_battery_during_sleep',
         'deep_duration',
+        'high_stress_duration',
         'light_duration',
+        # 'low_stress_duration',
         'rem_duration',
-        'sleep_duration',
-        'sleep_score',
-        'sleep_stress',
+        # 'sedentary_duration',
+        # 'sleep_duration',
+        # 'sleep_score',
+        # 'sleep_stress',
+        # 'steps',
         'stress_avg'
     ]
 

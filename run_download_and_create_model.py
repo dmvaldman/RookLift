@@ -24,14 +24,21 @@ def download_and_create():
     # model_type = 'LogisticRegressionSparse'
 
     features = [
+        # 'active_calories',
         'activity_calories',
-        'awake_duration',
+        # 'awake_duration',
+        # 'battery_max',
+        'body_battery_during_sleep',
         'deep_duration',
+        'high_stress_duration',
         'light_duration',
+        # 'low_stress_duration',
         'rem_duration',
-        'sleep_duration',
-        'sleep_score',
-        'sleep_stress',
+        # 'sedentary_duration',
+        # 'sleep_duration',
+        # 'sleep_score',
+        # 'sleep_stress',
+        # 'steps',
         'stress_avg'
     ]
 
