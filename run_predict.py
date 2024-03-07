@@ -77,13 +77,14 @@ def compare_datapoints(datapoints, column_names, ranges, importances):
     metrics.sort(key=lambda x: abs(x[1]['importance']), reverse=True)
     return metrics
 
-# 0 */2 * * * runs every 2 hrs
+# 0 */3 * * * runs every 3 hrs
+# 0 1-23/3 * * * runs every 3 hrs starting at 1am
 # 0 14 * * * runs at 7am PT once a day
 @stub.function(
         image=image,
         secrets=[secrets],
         volumes={"/data": vol},
-        schedule=Cron("0 */3 * * *")
+        schedule=Cron("0 1-23/3 * * *")
     )
 def predict(upload=False, features=None, ):
     data_dir = 'data' if is_local else '/data'
