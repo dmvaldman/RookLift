@@ -52,21 +52,31 @@ def get_datapoints(date, username, garmin, column_names, features=None):
 
 def compare_datapoints(datapoints, column_names, ranges, importances):
     metrics = []
+
+    # max importance, ignoring `rating_morning` column index, and against absolute value of values
+    rating_column_index = column_names.index('rating_morning')
+    max_importance = -100
+    for i, importance in enumerate(importances):
+        if i == rating_column_index:
+            continue
+        if abs(importances[i]) > max_importance:
+            max_importance = abs(importances[i])
+
     for feature, value, importance in zip(column_names, datapoints, importances):
         # skip 'rating'
         if feature == 'rating_morning':
             continue
 
         # Remove this line when we're confident about negative importance
-        importance = abs(importance)
+        importance = abs(importance) / max_importance
 
         low, high = ranges[feature]
 
         # level between 0 and 1
         level = (value - low) / (high - low)
 
-        # level between -.5 and .5 scaled by importance, then shifted back
-        level = importance * (level - 0.5) + 0.5
+        # level between -1 and 1 scaled by importance, then shifted back and rescaled
+        level = (importance * (2 * level - 1) + 1) / 2
 
         # replace _ with space and capitalize first letter of feature
         feature = feature.replace('_', ' ').capitalize()
