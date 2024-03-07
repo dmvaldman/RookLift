@@ -130,6 +130,14 @@ def preprocess(df, features=None, aggregate_activity=False, include_rating_cols=
     if 'date' in df.columns:
         df = df.dropna(subset=['date'])
 
+    # rename `body_battery_during_sleep` to `body_battery` if it exists
+    if 'body_battery_during_sleep' in df.columns:
+        df.rename(columns={'body_battery_during_sleep': 'body_battery'}, inplace=True)
+
+    # rename `high_stress_duration` to `stress_duration` if it exists
+    if 'stress_duration' in df.columns:
+        df.rename(columns={'stress_duration': 'high_stress_duration'}, inplace=True)
+
     # not called when running `predict.py`
     if include_rating_cols:
         # drop rows where rating is null
