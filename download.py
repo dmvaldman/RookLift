@@ -192,11 +192,11 @@ def get_body_battery_during_sleep(garmin, start_date, end_date, save=False, save
         data = garmin.get_user_summary(date.isoformat())
 
         # shift date back one day
-        date_shifted = datetime.datetime.strptime(data['calendarDate'], '%Y-%m-%d').date() - datetime.timedelta(days=0)
+        date_shifted = datetime.datetime.strptime(data['calendarDate'], '%Y-%m-%d').date()
 
         data_formatted = {
             "date": str(date_shifted),
-            "body_battery_during_sleep": data['bodyBatteryDuringSleep']
+            "body_battery": data['bodyBatteryDuringSleep']
         }
 
         body_battery_sleep.append(data_formatted)
@@ -219,6 +219,10 @@ def get_daily_summary(garmin, start_date, end_date, save=False, save_dir="data",
             daily_battery = json.load(f)
         return daily_battery
 
+    # decrement dates by 1 because we'll later increment by 1
+    start_date -= datetime.timedelta(days=1)
+    end_date -= datetime.timedelta(days=1)
+
     # loop through days between start_date and end_date
     daily_summary = []
     for day in range((end_date - start_date).days + 1):
@@ -235,7 +239,7 @@ def get_daily_summary(garmin, start_date, end_date, save=False, save_dir="data",
             # "highly_active_seconds": data['highlyActiveSeconds'],
             # "active_seconds": data['activeSeconds'],
             "sedentary_duration": data['sedentarySeconds'],
-            "high_stress_duration": data['highStressDuration'],
+            "stress_duration": data['highStressDuration'],
             "low_stress_duration": data['lowStressDuration'],
             "active_calories": data['activeKilocalories'],
             # "bodyBatteryHighestValue": data['bodyBatteryHighestValue'],

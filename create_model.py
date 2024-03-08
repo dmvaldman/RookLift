@@ -26,19 +26,20 @@ def analyze(df, model_type="LogisiticRegression", plot=False):
     if scaler is not None:
         X = scaler.fit_transform(X)
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    random_state = 16
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=random_state)
 
     # Initialize the logistic regression model
     if model_type == 'LogisticRegressionSparse':
-        model = LogisticRegression(random_state=42, penalty='l1', solver='liblinear')
+        model = LogisticRegression(random_state=random_state, penalty='l1', solver='liblinear')
     elif model_type == 'LogisticRegression':
-        model = LogisticRegression(random_state=42)
+        model = LogisticRegression(random_state=random_state)
     elif model_type == 'RandomForest':
-        model = RandomForestClassifier(random_state=42)
+        model = RandomForestClassifier(random_state=random_state)
     elif model_type == 'XGBoost':
-        model = XGBClassifier(use_label_encoder=False, eval_metric='logloss', random_state=42)
+        model = XGBClassifier(use_label_encoder=False, eval_metric='logloss', random_state=random_state)
     elif model_type == 'SVC':
-        model = SVC(kernel='linear', random_state=42)
+        model = SVC(kernel='linear', random_state=random_state)
     else:
         raise ValueError("Model type must be either LogisticRegression, RandomForest, XGBoost, or SVC")
 
@@ -129,14 +130,6 @@ def preprocess(df, features=None, aggregate_activity=False, include_rating_cols=
     # drop rows where date is null if it's not the index
     if 'date' in df.columns:
         df = df.dropna(subset=['date'])
-
-    # rename `body_battery_during_sleep` to `body_battery` if it exists
-    if 'body_battery_during_sleep' in df.columns:
-        df.rename(columns={'body_battery_during_sleep': 'body_battery'}, inplace=True)
-
-    # rename `high_stress_duration` to `stress_duration` if it exists
-    if 'high_stress_duration' in df.columns:
-        df.rename(columns={'high_stress_duration': 'stress_duration'}, inplace=True)
 
     # not called when running `predict.py`
     if include_rating_cols:
@@ -311,9 +304,9 @@ if __name__ == '__main__':
         'activity_calories',
         # 'awake_duration',
         # 'battery_max',
-        'body_battery_during_sleep',
+        'body_battery',
         'deep_duration',
-        'high_stress_duration',
+        'stress_duration',
         'light_duration',
         # 'low_stress_duration',
         'rem_duration',
