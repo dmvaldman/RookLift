@@ -115,7 +115,14 @@ def predict(upload=False, features=None, ):
     date = datetime.datetime.now(current_timezone).date()
 
     model, scaler, column_names, importances = load_model(model_path)
-    datapoints = get_datapoints(date, username, garmin, column_names, features=features)
+
+    try:
+        datapoints = get_datapoints(date, username, garmin, column_names, features=features)
+    except Exception as e:
+        # use previous day because current values aren't there
+        date = date - datetime.timedelta(days=1)
+        datapoints = get_datapoints(date, username, garmin, column_names, features=features)
+
     level = predict_probabilities(datapoints, model, scaler)
 
     # load ranges
