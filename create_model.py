@@ -175,9 +175,9 @@ def preprocess(df, features=None, aggregate_activity=False, include_rating_cols=
 def good_baseline(df):
     df_good = df[df['rating_bool'] > 0]
     # top quantile of df values
-    range_high = df_good.quantile(0.80)
+    range_high = df_good.quantile(0.70)
     # bottom quartile of df values
-    range_low = df_good.quantile(0.20)
+    range_low = df_good.quantile(0.30)
 
     # hack for activity calories which are usually 0. take non-zero and do quartile of those
     if 'activity_calories' in df.columns:
@@ -231,7 +231,7 @@ def save_model(model, scaler, column_names, save_path='data/model_data.json'):
             'column_names': column_names,
             'scaler_mean': scaler_mean,
             'scaler_std': scaler_std
-        }, f)
+        }, f, indent=2)
 
 def load_model(path='data/model_data.json'):
     with open(path, 'r') as f:
