@@ -142,17 +142,17 @@ def preprocess(df, features=None, aggregate_activity=False, include_rating_cols=
 
     # process `activity_calories` column by replacing with trailing column of sum of previous 2 days, using 0 if missing
     if 'activity_calories' in df.columns:
-        df['activity_calories'] = df['activity_calories'].fillna(0)
+        df.loc[:, 'activity_calories'] = df['activity_calories'].fillna(0)
         if aggregate_activity: df['activity_calories'] = df['activity_calories'].rolling(window=2).sum()
 
     # # process active_kilocalories column by replacing with trailing column of sum of previous 2 days, using 0 if missing
     if 'active_kilocalories' in df.columns:
-        df['active_kilocalories'] = df['active_kilocalories'].fillna(0)
+        df.loc[:, 'active_kilocalories'] = df['active_kilocalories'].fillna(0)
         if aggregate_activity: df['active_kilocalories'] = df['active_kilocalories'].rolling(window=2).sum()
 
     # # process `active_seconds` column by replacing with trailing column of sum of previous 2 days, using 0 if missing
     if 'active_seconds' in df.columns:
-        df['active_seconds'] = df['active_seconds'].fillna(0)
+        df.low[:, 'active_seconds'] = df['active_seconds'].fillna(0)
         if aggregate_activity: df['active_seconds'] = df['active_seconds'].rolling(window=2).sum()
 
     # make date index if not already
