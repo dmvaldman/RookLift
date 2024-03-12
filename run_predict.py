@@ -95,7 +95,27 @@ def compare_datapoints(datapoints, column_names, ranges, importances):
         volumes={"/data": vol},
         schedule=Cron("0 1-23/3 * * *")
     )
-def predict(upload=False, features=None, ):
+def predict():
+    upload = True
+    features = [
+        # 'active_calories',
+        'activity_calories',
+        # 'awake_duration',
+        # 'battery_max',
+        'body_battery',
+        'deep_duration',
+        'stress_duration',
+        'light_duration',
+        # 'low_stress_duration',
+        'rem_duration',
+        # 'sedentary_duration',
+        # 'sleep_duration',
+        # 'sleep_score',
+        # 'sleep_stress',
+        # 'steps',
+        'stress_avg'
+    ]
+
     data_dir = 'data' if is_local else '/data'
     model_path = os.path.join(data_dir, 'model_data.json')
     ranges_path = os.path.join(data_dir, 'model_ranges.json')
@@ -159,23 +179,4 @@ def send_to_jsonbin(level, metrics):
     print('JSBIN PUT response:\n', json.dumps(response_data, indent=2))
 
 if __name__ == '__main__':
-    upload = True
-    features = [
-        # 'active_calories',
-        'activity_calories',
-        # 'awake_duration',
-        # 'battery_max',
-        'body_battery',
-        'deep_duration',
-        'stress_duration',
-        'light_duration',
-        # 'low_stress_duration',
-        'rem_duration',
-        # 'sedentary_duration',
-        # 'sleep_duration',
-        # 'sleep_score',
-        # 'sleep_stress',
-        # 'steps',
-        'stress_avg'
-    ]
-    predict.local(upload=upload, features=features)
+    predict.local()
