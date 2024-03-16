@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 def analyze(df, model_type="LogisiticRegression", plot=False):
     # Target variable is "rating_delta" and "rating" from previous day
     X = df.drop(['rating_bool'], axis=1)
-    y = df['rating_bool']
+    y = df['rating_bool'].map({-1: 0, 1: 1})
 
     column_names = X.columns
 
@@ -264,6 +264,7 @@ def load_model(path='data/model_data.json'):
         scaler = StandardScaler()
         scaler.mean_ = np.array(scaler_mean)
         scaler.scale_ = np.array(scaler_std)
+        scaler.var_ = scaler.scale_ ** 2
     else:
         scaler = None
 
