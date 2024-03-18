@@ -284,7 +284,7 @@ def predict_probabilities(datapoints, model, scaler=None):
 
     if isinstance(model, LogisticRegression):
         z = np.dot(datapoints, model.coef_) + model.intercept_
-        return sigmoid(z)
+        return 2 * sigmoid(z)
     elif isinstance(model, LinearRegression):
         z = np.dot(datapoints, model.coef_) + model.intercept_
         return z
