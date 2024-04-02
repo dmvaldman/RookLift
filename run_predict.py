@@ -155,28 +155,26 @@ def predict():
     print(f"Metrics:\n{json.dumps(metrics, indent=2)}")
 
     if upload:
-        send_to_jsonbin(level, metrics)
+        send_to_gist(level, metrics)
 
-def send_to_jsonbin(level, metrics):
-    X_ACCESS_KEY = os.getenv('JSONBIN_ACCESS_KEY')
-    X_MASTER_KEY = os.getenv('JSONBIN_MASTER_KEY')
+def send_to_gist(level, metrics):
+    gist_token = os.getenv('gist_token')
+    gist_id = os.getenv('gist_id')
+    filename = "rooklift.json"
 
-    url = os.getenv('JSONBIN_URL')
-
-    headers = {
-        "X-Master-Key": X_MASTER_KEY,
-        "X-Access-Key": X_ACCESS_KEY,
-        "Content-Type": "application/json"
-    }
+    gist_url = f"https://api.github.com/gists/{gist_id}"
 
     data = {
         "level": level,
         "metrics": metrics
     }
 
-    response = requests.put(url, headers=headers, json=data)
+    headers = {"Authorization": f"token {gist_token}"}
+
+    response = requests.patch(gist_url, headers=headers, json={"files": {filename: {"content": str(data)}}})
+
     response_data = response.json()
-    print('JSBIN PUT response:\n', json.dumps(response_data, indent=2))
+    print('Gist PUT response:\n', json.dumps(response_data, indent=2))
 
 if __name__ == '__main__':
     predict.local()
