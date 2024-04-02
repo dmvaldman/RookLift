@@ -169,12 +169,11 @@ def send_to_gist(level, metrics):
         "metrics": metrics
     }
 
+    data_str = json.dumps(data, indent=2)
+
     headers = {"Authorization": f"token {gist_token}"}
 
-    response = requests.patch(gist_url, headers=headers, json={"files": {filename: {"content": str(data)}}})
-
-    response_data = response.json()
-    print('Gist PUT response:\n', json.dumps(response_data, indent=2))
+    requests.patch(gist_url, headers=headers, json={"files": {filename: {"content": data_str}}})
 
 if __name__ == '__main__':
     predict.local()
