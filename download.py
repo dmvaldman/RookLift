@@ -112,8 +112,8 @@ def get_lichess_ratings_old(username, start_date, end_date, game_type='Blitz', s
     save_path = os.path.join(save_dir, "daily_ratings.json")
     if not force and os.path.exists(save_path):
         with open(save_path, "r") as f:
-            daily_battery = json.load(f)
-        return daily_battery
+            daily_ratings = json.load(f)
+        return daily_ratings
 
     url = f"https://lichess.org/api/user/{username}/rating-history"
     response = requests.get(url)
@@ -153,8 +153,8 @@ def get_daily_stress(garmin, start_date, end_date, save=False, save_dir="data", 
     save_path = os.path.join(save_dir, "daily_stress.json")
     if not force and os.path.exists(save_path):
         with open(save_path, "r") as f:
-            daily_battery = json.load(f)
-        return daily_battery
+            daily_stress = json.load(f)
+        return daily_stress
 
     # loop through days between start_date and end_date
     daily_stress = []
@@ -202,6 +202,12 @@ def get_body_battery_during_sleep(garmin, start_date, end_date, save=False, save
         body_battery_sleep.append(data_formatted)
         time.sleep(0.2)
 
+    if not body_battery_sleep:
+        body_battery_sleep.append({
+            "date": start_date.isoformat(),
+            "body_battery": None
+        })
+
     # sort by date in calendar order
     body_battery_sleep.sort(key=lambda x: datetime.datetime.strptime(x['date'], '%Y-%m-%d'))
 
@@ -216,8 +222,8 @@ def get_daily_summary(garmin, start_date, end_date, save=False, save_dir="data",
     save_path = os.path.join(save_dir, "daily_summary.json")
     if not force and os.path.exists(save_path):
         with open(save_path, "r") as f:
-            daily_battery = json.load(f)
-        return daily_battery
+            daily_summary = json.load(f)
+        return daily_summary
 
     # decrement dates by 1 because we'll later increment by 1
     start_date -= datetime.timedelta(days=1)
@@ -281,6 +287,13 @@ def get_body_battery(garmin, start_date, end_date, save=False, save_dir="data", 
                 "battery_max": max_battery
             }
             values.append(day_battery)
+
+        if not values:
+            values.append({
+                "date": start.isoformat(),
+                "battery_max": None
+            })
+
         return values
 
     # if start_date is more than 30 days behind end_date, batch into 30-day chunks and combine
