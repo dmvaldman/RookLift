@@ -14,7 +14,8 @@ logging.basicConfig(level=logging.INFO)
     image=image,
     secrets=[secrets],
     volumes={"/data": vol},
-    schedule=Cron("0 12 * * 1")
+    schedule=Cron("0 12 * * 1"),
+    timeout=600
 )
 def download_and_create():
     save = True

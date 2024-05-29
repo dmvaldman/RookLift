@@ -5,6 +5,7 @@ import requests
 import datetime
 import pytz
 import logging
+import boto3
 
 from download import download_range
 from create_model import load_model, predict_probabilities, preprocess
@@ -13,6 +14,12 @@ from common import stub, image, secrets, vol, is_local, Cron
 
 logging.basicConfig(level=logging.INFO)
 dotenv.load_dotenv()
+
+client = boto3.client(
+    's3',
+    aws_access_key_id=os.getenv('aws_access_key_id'),
+    aws_secret_access_key=os.getenv('aws_secret_access_key')
+)
 
 def get_chess_rating(username):
     lichess_url = f"https://lichess.org/api/user/{username}/rating-history"
@@ -27,14 +34,15 @@ def get_chess_rating(username):
 def get_garmin_metrics(garmin, date, features=None):
     try:
         df = download_range(garmin, date, date, save=False, force=True)
+        df_processed = preprocess(df, features=features, include_rating_cols=False, num_days_lag=0, aggregate_activity=False, save=False)
     except Exception as e:
         print(f"Error: {e}")
         # use prev day if error
         date = date - datetime.timedelta(days=1)
         df = download_range(garmin, date, date, save=False, force=True)
+        df_processed = preprocess(df, features=features, include_rating_cols=False, num_days_lag=0, aggregate_activity=False, save=False)
         return None
 
-    df_processed = preprocess(df, features=features, include_rating_cols=False, num_days_lag=0, aggregate_activity=False, save=False)
     metrics = df_processed.iloc[0].to_dict()
     return metrics
 
@@ -158,22 +166,27 @@ def predict():
         send_to_gist(level, metrics)
 
 def send_to_gist(level, metrics):
-    gist_token = os.getenv('gist_token')
-    gist_id = os.getenv('gist_id')
-    filename = "rooklift.json"
-
-    gist_url = f"https://api.github.com/gists/{gist_id}"
-
     data = {
         "level": level,
         "metrics": metrics
     }
 
-    data_str = json.dumps(data, indent=2)
+    # gist_token = os.getenv('gist_token')
+    # gist_id = os.getenv('gist_id')
+    # filename = "rooklift.json"
 
-    headers = {"Authorization": f"token {gist_token}"}
+    # gist_url = f"https://api.github.com/gists/{gist_id}"
 
-    requests.patch(gist_url, headers=headers, json={"files": {filename: {"content": data_str}}})
+    # data_str = json.dumps(data, indent=2)
+    # headers = {"Authorization": f"token {gist_token}"}
+    # requests.patch(gist_url, headers=headers, json={"files": {filename: {"content": data_str}}})
+
+    # upload file to bucket
+    client.put_object(Body=json.dumps(data), Bucket='rooklift', Key='rooklift.json')
+
+    # make file public
+    client.put_object_acl(ACL='public-read', Bucket='rooklift', Key='rooklift.json')
+
 
 if __name__ == '__main__':
     predict.local()
