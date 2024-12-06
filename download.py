@@ -12,7 +12,7 @@ from datetime import timedelta
 from collections import defaultdict
 from garminconnect import Garmin
 
-from common import stub, image, secrets, is_local
+from common import is_local
 
 dotenv.load_dotenv()
 

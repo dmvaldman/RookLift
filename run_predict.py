@@ -10,7 +10,7 @@ import boto3
 from download import download_range
 from create_model import load_model, predict_probabilities, preprocess
 from garminconnect import Garmin
-from common import stub, image, secrets, vol, is_local, Cron
+from common import app, image, secrets, vol, is_local, Cron
 
 import garth
 garth.http.USER_AGENT = {"User-Agent": ("GCM-iOS-5.7.2.1")}
@@ -100,7 +100,7 @@ def compare_datapoints(datapoints, column_names, ranges, importances):
 # 0 */3 * * * runs every 3 hrs
 # 0 1-23/3 * * * runs every 3 hrs starting at 1am
 # 0 14 * * * runs at 7am PT once a day
-@stub.function(
+@app.function(
         image=image,
         secrets=[secrets],
         volumes={"/data": vol},

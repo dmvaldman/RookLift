@@ -2,7 +2,7 @@ import json
 import os
 import logging
 from garminconnect import Garmin
-from common import stub, image, secrets, vol, is_local, Cron
+from common import app, image, secrets, vol, is_local, Cron
 
 from download import download
 from create_model import save_model, good_baseline, analyze, preprocess
@@ -13,7 +13,7 @@ garth.http.USER_AGENT = {"User-Agent": ("GCM-iOS-5.7.2.1")}
 logging.basicConfig(level=logging.INFO)
 
 # Runs every Monday at 5am PT
-@stub.function(
+@app.function(
     image=image,
     secrets=[secrets],
     volumes={"/data": vol},

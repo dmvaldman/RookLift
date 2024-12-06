@@ -1,6 +1,6 @@
 from modal import Volume, Image, Secret, is_local, Cron, App
 
-stub = App("RookLift")
+app = App("RookLift")
 
 image = Image.debian_slim().pip_install_from_requirements("requirements.txt")
 secrets = Secret.from_dotenv()
