@@ -7,6 +7,9 @@ from common import stub, image, secrets, vol, is_local, Cron
 from download import download
 from create_model import save_model, good_baseline, analyze, preprocess
 
+import garth
+garth.http.USER_AGENT = {"User-Agent": ("GCM-iOS-5.7.2.1")}
+
 logging.basicConfig(level=logging.INFO)
 
 # Runs every Monday at 5am PT

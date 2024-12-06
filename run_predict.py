@@ -12,6 +12,9 @@ from create_model import load_model, predict_probabilities, preprocess
 from garminconnect import Garmin
 from common import stub, image, secrets, vol, is_local, Cron
 
+import garth
+garth.http.USER_AGENT = {"User-Agent": ("GCM-iOS-5.7.2.1")}
+
 logging.basicConfig(level=logging.INFO)
 dotenv.load_dotenv()
 
