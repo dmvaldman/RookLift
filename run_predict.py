@@ -18,6 +18,7 @@ garth.http.USER_AGENT = {"User-Agent": ("GCM-iOS-5.7.2.1")}
 logging.basicConfig(level=logging.INFO)
 dotenv.load_dotenv()
 
+# https://rooklift.s3.us-west-1.amazonaws.com/rooklift.json
 client = boto3.client(
     's3',
     aws_access_key_id=os.getenv('aws_access_key_id'),
@@ -166,23 +167,13 @@ def predict():
     print(f"Metrics:\n{json.dumps(metrics, indent=2)}")
 
     if upload:
-        send_to_gist(level, metrics)
+        save_to_S3(level, metrics)
 
-def send_to_gist(level, metrics):
+def save_to_S3(level, metrics):
     data = {
         "level": level,
         "metrics": metrics
     }
-
-    # gist_token = os.getenv('gist_token')
-    # gist_id = os.getenv('gist_id')
-    # filename = "rooklift.json"
-
-    # gist_url = f"https://api.github.com/gists/{gist_id}"
-
-    # data_str = json.dumps(data, indent=2)
-    # headers = {"Authorization": f"token {gist_token}"}
-    # requests.patch(gist_url, headers=headers, json={"files": {filename: {"content": data_str}}})
 
     # upload file to bucket
     client.put_object(Body=json.dumps(data), Bucket='rooklift', Key='rooklift.json')
