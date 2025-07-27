@@ -11,3 +11,4 @@ matplotlib==3.5.1
 boto3
 garth
 modal
+supabase==2.3.4
