@@ -9,5 +9,5 @@ Build a logistic regression model with your historical Garmin and Lichess data, 
 Model creation are chess predictions are Cron jobs using Modal. Model creation happens once a week and predictions each morning.
 
 ```
-modal deploy -m deploy.py
+modal deploy -m deploy
 ```
