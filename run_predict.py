@@ -7,10 +7,10 @@ import logging
 import boto3
 import pandas as pd
 
+from modal_defs import image, secrets, vol, app, Cron, is_local
 from create_model import load_model, predict_probabilities, preprocess
 from garmin_client import GarminClient
 from lichess_client import LichessClient
-from common import app, image, secrets, vol, is_local, Cron
 
 import garth
 garth.http.USER_AGENT = {"User-Agent": ("GCM-iOS-5.7.2.1")}
@@ -34,8 +34,7 @@ def get_garmin_metrics(garmin_client, date, features=None):
         metrics_dict = garmin_client.download_day_metrics(date)
     except Exception as e:
         print(f"Error fetching data for {date}: {e}. Trying previous day.")
-        date_previous = date - datetime.timedelta(days=1)
-        metrics_dict = garmin_client.download_day(date_previous)
+        metrics_dict = garmin_client.download_day(date)
 
     # Convert the dictionary of metrics into a DataFrame for preprocessing
     df = pd.DataFrame([metrics_dict])
@@ -123,7 +122,8 @@ def predict(save=True):
         'stress_avg'
     ]
 
-    data_dir = 'data' if is_local else '/data'
+    # Determine if running locally or on Modal
+    data_dir = "data" if is_local else "/data"
     model_path = os.path.join(data_dir, 'model_data.json')
     ranges_path = os.path.join(data_dir, 'model_ranges.json')
 

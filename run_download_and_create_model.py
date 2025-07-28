@@ -1,8 +1,8 @@
 import json
 import os
 import logging
-from common import app, image, secrets, vol, is_local, Cron
 
+from modal_defs import image, secrets, vol, app, Cron, is_local
 from create_dataset import create_dataset
 from create_model import save_model, good_baseline, analyze, preprocess
 
@@ -11,7 +11,6 @@ garth.http.USER_AGENT = {"User-Agent": ("GCM-iOS-5.7.2.1")}
 
 logging.basicConfig(level=logging.INFO)
 
-# Runs every Monday at 5am PT
 @app.function(
     image=image,
     secrets=[secrets],
@@ -43,11 +42,12 @@ def download_and_create():
         'stress_avg'
     ]
 
+    # Determine if running locally or on Modal
     save_dir = "data" if is_local else "/data"
-    save_path_df = save_dir + "/fitness_signals.csv"
-    save_path_df_processed = save_dir + "/fitness_signals_processed.csv"
-    save_path_model = save_dir + "/model_data.json"
-    save_path_baseline = save_dir + "/model_ranges.json"
+    save_path_df = os.path.join(save_dir, "fitness_signals.csv")
+    save_path_df_processed = os.path.join(save_dir, "fitness_signals_processed.csv")
+    save_path_model = os.path.join(save_dir, "model_data.json")
+    save_path_baseline = os.path.join(save_dir, "model_ranges.json")
 
     print("\n--- Creating Unified Dataset ---")
     df = create_dataset()
@@ -68,6 +68,7 @@ def download_and_create():
 
         if not is_local:
             vol.commit()
+
 
 if __name__ == '__main__':
     download_and_create.local()
