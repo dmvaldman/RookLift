@@ -1,10 +1,11 @@
 import json
 import os
 import logging
-from garminconnect import Garmin
 from common import app, image, secrets, vol, is_local, Cron
 
-from download import download
+from lichess_client import LichessClient
+from garmin_client import GarminClient
+from create_dataset import create_dataset
 from create_model import save_model, good_baseline, analyze, preprocess
 
 import garth
@@ -22,7 +23,6 @@ logging.basicConfig(level=logging.INFO)
 )
 def download_and_create():
     save = True
-    force = True # force save (overwrite)
     model_type = 'LogisticRegression'
     # model_type = 'LogisticRegressionSparse'
 
@@ -55,10 +55,23 @@ def download_and_create():
     garmin_email = os.getenv('garmin_email')
     garmin_password = os.getenv('garmin_password')
 
-    garmin = Garmin(garmin_email, garmin_password)
-    garmin.login()
+    # 1. Update data sources
+    print("--- Updating Lichess Data ---")
+    lichess_client = LichessClient(lichess_username)
+    lichess_client.download(save=True)
 
-    df = download(lichess_username, garmin, save=save, save_dir=save_dir, save_path=save_path_df, force=force)
+    print("\n--- Updating Garmin Data ---")
+    garmin_client = GarminClient(garmin_email, garmin_password)
+    garmin_client.download(save=True)
+
+    # 2. Create the unified dataset from the database
+    print("\n--- Creating Unified Dataset ---")
+    df = create_dataset()
+
+    if save:
+        df.to_csv(save_path_df)
+        print(f"💾 Unified dataset saved to {save_path_df}")
+
     df = preprocess(df, features=features, include_rating_cols=True, num_days_lag=0, aggregate_activity=False, save=save, save_path=save_path_df_processed)
 
     model, scaler, column_names = analyze(df, model_type=model_type, plot=False)
