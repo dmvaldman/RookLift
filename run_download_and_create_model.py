@@ -3,8 +3,6 @@ import os
 import logging
 from common import app, image, secrets, vol, is_local, Cron
 
-from lichess_client import LichessClient
-from garmin_client import GarminClient
 from create_dataset import create_dataset
 from create_model import save_model, good_baseline, analyze, preprocess
 
@@ -51,20 +49,6 @@ def download_and_create():
     save_path_model = save_dir + "/model_data.json"
     save_path_baseline = save_dir + "/model_ranges.json"
 
-    lichess_username = os.getenv("lichess_username")
-    garmin_email = os.getenv('garmin_email')
-    garmin_password = os.getenv('garmin_password')
-
-    # 1. Update data sources
-    print("--- Updating Lichess Data ---")
-    lichess_client = LichessClient(lichess_username)
-    lichess_client.download(save=True)
-
-    print("\n--- Updating Garmin Data ---")
-    garmin_client = GarminClient(garmin_email, garmin_password)
-    garmin_client.download(save=True)
-
-    # 2. Create the unified dataset from the database
     print("\n--- Creating Unified Dataset ---")
     df = create_dataset()
 

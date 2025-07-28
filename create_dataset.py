@@ -3,7 +3,7 @@ import datetime
 import pandas as pd
 import dotenv
 
-from db import db
+from db import get_db
 
 dotenv.load_dotenv()
 
@@ -27,6 +27,7 @@ GARMIN_COLUMN_NAMES = [
 
 def get_earliest_date(tables: list[str]) -> datetime.date | None:
     """Finds the earliest date available across a list of tables."""
+    db = get_db()
     earliest_date = None
     for table in tables:
         try:
@@ -42,33 +43,30 @@ def get_earliest_date(tables: list[str]) -> datetime.date | None:
     return earliest_date
 
 
-def create_dataset() -> pd.DataFrame:
+def create_dataset(start_date=None, end_date=None):
     """
-    Creates a unified dataset by calling a database function to perform the joins.
-
-    Returns:
-        A pandas DataFrame containing the joined data from all tables.
+    Creates a unified dataset by fetching pre-joined data from the
+    `get_daily_signals` database function.
     """
-    print("🚀 Creating unified dataset from all database tables...")
+    db = get_db()
+    print("📞 Calling the `get_daily_signals` database function...")
 
-    # 1. Determine the optimal date range
-    lichess_start_date = get_earliest_date(["lichess"])
-    garmin_start_date = get_earliest_date(["garmin_summary"])
+    # Set parameters for the RPC call
+    params = {}
 
-    if not lichess_start_date or not garmin_start_date:
-        print("❌ Cannot create dataset: Lichess or Garmin data is missing from the database.")
-        print("Please run the download scripts first.")
-        return pd.DataFrame()
+    if start_date is None:
+      start_date = get_earliest_date([GARMIN_TABLES[0]])
 
-    start_date = max(lichess_start_date, garmin_start_date)
-    end_date = datetime.date.today()
+    if end_date is None:
+      end_date = datetime.date.today()
 
-    print(f"🔍 Determined analysis date range: {start_date} to {end_date}")
-    print("  - Calling database function 'get_daily_signals'...")
+    start_date = start_date.isoformat()
+    end_date = end_date.isoformat()
+
+    params["start_date"] = start_date
+    params["end_date"] = end_date
 
     try:
-        # 2. Call the database function to get the pre-joined data
-        params = {"start_date": start_date.isoformat(), "end_date": end_date.isoformat()}
         response = db.rpc('get_daily_signals', params).execute()
 
         if not response.data:

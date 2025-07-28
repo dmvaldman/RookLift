@@ -3,7 +3,7 @@ import datetime
 import requests
 from collections import defaultdict
 
-from db import db
+from db import get_db
 from utils import (
     datetime_to_timestamp,
     timestamp_to_datetime,
@@ -16,6 +16,28 @@ class LichessClient:
         self.username = username
         self.timezone = "US/Pacific"
         self.start_hour = 6  # 6am local time
+
+    def download_current(self, game_type='Blitz'):
+        """
+        Fetches the user's most recent rating for a specific game type.
+        """
+        url = f"https://lichess.org/api/user/{self.username}/rating-history"
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+            data = response.json()
+            for datum in data:
+                if datum['name'] == game_type:
+                    points = datum.get('points')
+                    if points:
+                        # The last point in the history is the most recent one.
+                        # The 4th element (index 3) is the rating.
+                        return points[-1][3]
+            print(f"Could not find rating for game type {game_type}")
+            return None # Return None if game type or points are not found
+        except requests.RequestException as e:
+            print(f"❌ Error fetching rating history from Lichess: {e}")
+            return None
 
     def get_first_date(self, game_type="Blitz"):
         """
@@ -133,6 +155,7 @@ class LichessClient:
             return None
 
         try:
+            db = get_db()
             # By specifying `on_conflict="date"`, we tell Supabase to update
             # the existing row if a row with the same date already exists.
             result = db.table("lichess").upsert(ratings_data, on_conflict="date").execute()
@@ -202,6 +225,7 @@ class LichessClient:
 
     def get_ratings_from_db(self, start_date=None, end_date=None):
         """Retrieve ratings data from Supabase for a given date range."""
+        db = get_db()
         query = db.table("lichess").select("*")
 
         if start_date:
@@ -221,6 +245,7 @@ class LichessClient:
             or None if the table is empty.
         """
         try:
+            db = get_db()
             result = (
                 db.table("lichess")
                 .select("date")

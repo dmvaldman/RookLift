@@ -1,15 +1,15 @@
 import os
 import dotenv
 import json
-import requests
 import datetime
 import pytz
 import logging
 import boto3
+import pandas as pd
 
-from download import download_range
 from create_model import load_model, predict_probabilities, preprocess
-from garminconnect import Garmin
+from garmin_client import GarminClient
+from lichess_client import LichessClient
 from common import app, image, secrets, vol, is_local, Cron
 
 import garth
@@ -19,40 +19,36 @@ logging.basicConfig(level=logging.INFO)
 dotenv.load_dotenv()
 
 # https://rooklift.s3.us-west-1.amazonaws.com/rooklift.json
-client = boto3.client(
+s3_client = boto3.client(
     's3',
     aws_access_key_id=os.getenv('aws_access_key_id'),
     aws_secret_access_key=os.getenv('aws_secret_access_key')
 )
 
-def get_chess_rating(username):
-    lichess_url = f"https://lichess.org/api/user/{username}/rating-history"
-    response = requests.get(lichess_url)
-    data = response.json()
-    for datum in data:
-        if datum['name'] == 'Blitz':
-            points = datum['points']
-            last_rating = points[-1][3]
-            return last_rating
-
-def get_garmin_metrics(garmin, date, features=None):
+def get_garmin_metrics(garmin_client, date, features=None):
+    """
+    Fetches Garmin metrics for a specific date, processes them, and returns a dictionary.
+    Retries with the previous day on failure.
+    """
     try:
-        df = download_range(garmin, date, date, save=False, force=True)
-        df_processed = preprocess(df, features=features, include_rating_cols=False, num_days_lag=0, aggregate_activity=False, save=False)
+        metrics_dict = garmin_client.download_day_metrics(date)
     except Exception as e:
-        print(f"Error: {e}")
-        # use prev day if error
-        date = date - datetime.timedelta(days=1)
-        df = download_range(garmin, date, date, save=False, force=True)
-        df_processed = preprocess(df, features=features, include_rating_cols=False, num_days_lag=0, aggregate_activity=False, save=False)
-        return None
+        print(f"Error fetching data for {date}: {e}. Trying previous day.")
+        date_previous = date - datetime.timedelta(days=1)
+        metrics_dict = garmin_client.download_day(date_previous)
 
-    metrics = df_processed.iloc[0].to_dict()
-    return metrics
+    # Convert the dictionary of metrics into a DataFrame for preprocessing
+    df = pd.DataFrame([metrics_dict])
+    if 'date' in df.columns:
+        df['date'] = pd.to_datetime(df['date'])
 
-def get_datapoints(date, username, garmin, column_names, features=None):
-    rating = get_chess_rating(username)
-    metrics = get_garmin_metrics(garmin, date, features=features)
+    df_processed = preprocess(df, features=features, include_rating_cols=False, num_days_lag=0, aggregate_activity=False, save=False)
+    return df_processed.iloc[0].to_dict()
+
+
+def get_datapoints(date, lichess_client, garmin_client, column_names, features=None):
+    rating = lichess_client.download_current(game_type='Blitz')
+    metrics = get_garmin_metrics(garmin_client, date, features=features)
 
     values = []
     for column in column_names:
@@ -107,8 +103,7 @@ def compare_datapoints(datapoints, column_names, ranges, importances):
         volumes={"/data": vol},
         schedule=Cron("0 1-23/3 * * *")
     )
-def predict():
-    upload = True
+def predict(save=True):
     features = [
         # 'active_calories',
         'activity_calories',
@@ -135,12 +130,12 @@ def predict():
     if not is_local:
         vol.resolve()
 
-    username = os.getenv("lichess_username")
-    email = os.getenv('garmin_email')
-    password = os.getenv('garmin_password')
+    lichess_username = os.getenv("lichess_username")
+    garmin_email = os.getenv('garmin_email')
+    garmin_password = os.getenv('garmin_password')
 
-    garmin = Garmin(email, password)
-    garmin.login()
+    lichess_client = LichessClient(lichess_username)
+    garmin_client = GarminClient(garmin_email, garmin_password)
 
     # get today's date in the current timezone
     current_timezone = pytz.timezone('US/Pacific')
@@ -148,13 +143,7 @@ def predict():
 
     model, scaler, column_names, importances = load_model(model_path)
 
-    try:
-        datapoints = get_datapoints(date, username, garmin, column_names, features=features)
-    except Exception as e:
-        # use previous day because current values aren't there
-        date = date - datetime.timedelta(days=1)
-        datapoints = get_datapoints(date, username, garmin, column_names, features=features)
-
+    datapoints = get_datapoints(date, lichess_client, garmin_client, column_names, features=features)
     level = predict_probabilities(datapoints, model, scaler)
 
     # load ranges
@@ -166,7 +155,7 @@ def predict():
     print(f"Level: {level}")
     print(f"Metrics:\n{json.dumps(metrics, indent=2)}")
 
-    if upload:
+    if save:
         save_to_S3(level, metrics)
 
 def save_to_S3(level, metrics):
@@ -176,11 +165,11 @@ def save_to_S3(level, metrics):
     }
 
     # upload file to bucket
-    client.put_object(Body=json.dumps(data), Bucket='rooklift', Key='rooklift.json')
+    s3_client.put_object(Body=json.dumps(data), Bucket='rooklift', Key='rooklift.json')
 
     # make file public
-    client.put_object_acl(ACL='public-read', Bucket='rooklift', Key='rooklift.json')
+    s3_client.put_object_acl(ACL='public-read', Bucket='rooklift', Key='rooklift.json')
 
 
 if __name__ == '__main__':
-    predict.local()
+    predict.local(save=False)

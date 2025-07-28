@@ -125,6 +125,13 @@ def preprocess(df, features=None, aggregate_activity=False, include_rating_cols=
         if include_rating_cols:
             features += ['rating_morning', 'rating_evening']
         print('Avail Columns:', df.columns)
+
+        # For any feature that is required but not present in the DataFrame,
+        # add it as a new column filled with 0 to prevent errors.
+        for feature in features:
+            if feature not in df.columns:
+                df[feature] = 0
+
         df = df[features]
 
     # drop rows where date is null if it's not the index

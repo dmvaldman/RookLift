@@ -1,9 +1,10 @@
 import os
 import datetime
 import time
+import pandas as pd
 
 from garminconnect import Garmin
-from db import db
+from db import get_db
 
 # A small delay to be respectful to the Garmin API
 API_DELAY = 0.2
@@ -141,6 +142,22 @@ class GarminClient:
             time.sleep(API_DELAY)
         return all_data
 
+    def download_day(self, date):
+        """
+        Downloads all Garmin signals for a single day and returns them as a dictionary.
+        This is a specialized version of `download_range` for the prediction script.
+        """
+        all_signals_data = self.download_range(date, date, save=False)
+
+        # Flatten the data into a single dictionary
+        single_day_metrics = {'date': str(date)}
+        for signal_list in all_signals_data.values():
+            if signal_list:
+                # Each list should contain one dictionary for the specified day
+                single_day_metrics.update(signal_list[0])
+
+        return single_day_metrics
+
     def save_to_db(self, data, table_name):
         """Saves a list of data dictionaries to the specified Supabase table."""
         if not data:
@@ -148,6 +165,7 @@ class GarminClient:
             return None
         try:
             print(f"Saving {len(data)} records to '{table_name}'...")
+            db = get_db()
             result = db.table(table_name).upsert(data, on_conflict="date").execute()
             return result
         except Exception as e:
@@ -278,6 +296,7 @@ class GarminClient:
 
         for table in garmin_tables:
             try:
+                db = get_db()
                 result = db.table(table).select("date").order("date", desc=True).limit(1).execute()
                 if result.data:
                     current_date = datetime.datetime.strptime(result.data[0]['date'], "%Y-%m-%d").date()
