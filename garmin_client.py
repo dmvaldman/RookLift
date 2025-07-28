@@ -154,8 +154,8 @@ class GarminClient:
             print(f"❌ Error saving to '{table_name}': {e}")
             return None
 
-    def download_and_save_all(self, start_date, end_date):
-        """Downloads all Garmin signals for the date range and saves them to the database."""
+    def download_range(self, start_date, end_date, save=False):
+        """Downloads all Garmin signals for the date range and optionally saves them."""
         print(f"🚀 Starting download of all Garmin data from {start_date} to {end_date}...")
 
         # A mapping of download functions to the target table name
@@ -168,12 +168,60 @@ class GarminClient:
             self.download_daily_summary: "garmin_summary",
         }
 
+        all_data = {}
         for download_func, table_name in download_map.items():
             print(f"\n--- Downloading {table_name} data ---")
             data = download_func(start_date, end_date)
-            self.save_to_db(data, table_name)
+            if save:
+                self.save_to_db(data, table_name)
+            all_data[table_name] = data
 
-        print("\n🎉 All Garmin data downloaded and saved successfully.")
+        if save:
+            print("\n🎉 All Garmin data downloaded and saved successfully.")
+
+        return all_data
+
+    def download_all(self, save=True):
+        """
+        Performs a full historical download of all Garmin data.
+        1. Finds the user's first-ever date with Garmin data.
+        2. Downloads all signals from that date up to the present.
+        """
+        print("🚀 Starting full historical download of all Garmin data...")
+        start_date = self.get_first_date()
+        if not start_date:
+            print("❌ Could not find any Garmin data for this user. Exiting.")
+            return None
+
+        end_date = datetime.date.today()
+
+        print(f"\nFound first data on {start_date}. Proceeding to download all history up to {end_date}.")
+
+        return self.download_range(start_date, end_date, save=save)
+
+    def download(self, save=True):
+        """
+        Incrementally updates all Garmin data in the database.
+        Checks for the last saved date and downloads all new signals.
+        If the database is empty, it performs a full historical download.
+        """
+        print("🚀 Starting smart update of all Garmin data...")
+        last_date = self.get_last_recorded_date()
+
+        if not last_date:
+            print("\n- No existing Garmin data found in the database. Starting full download.")
+            return self.download_all(save=save)
+
+        start_date = last_date + datetime.timedelta(days=1)
+        end_date = datetime.date.today()
+
+        print(f"🔍 Last saved date is {last_date}. Resuming download from {start_date} to {end_date}.")
+
+        if start_date > end_date:
+            print("✅ Your database is already up-to-date. No new data to download.")
+            return None
+
+        return self.download_range(start_date, end_date, save=save)
 
     def get_first_date(self, start_date=None, end_date=None):
         """

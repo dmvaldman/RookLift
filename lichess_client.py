@@ -145,8 +145,8 @@ class Lichess:
             print("3. Check your .env file for correct Supabase credentials.")
             return None
 
-    def download_and_save_ratings(self, start_date, end_date, game_type='Blitz'):
-        """Download ratings data and save it to Supabase."""
+    def download_range(self, start_date, end_date, game_type='Blitz', save=False):
+        """Download ratings data for a range and optionally save it to Supabase."""
         print(
             f"Downloading Lichess ratings for '{self.username}' from {start_date} to {end_date}..."
         )
@@ -154,14 +154,51 @@ class Lichess:
         ratings_data = self.download_ratings(start_date, end_date, game_type)
 
         if ratings_data:
-            print(f"Downloaded data for {len(ratings_data)} days. Saving to database...")
-            result = self.save_ratings_to_db(ratings_data)
-            if result:
-                print("✅ Successfully saved ratings data to database.")
-            return result
+            if save:
+                print(f"Downloaded data for {len(ratings_data)} days. Saving to database...")
+                self.save_ratings_to_db(ratings_data)
+            return ratings_data
         else:
             print("No new rating data found for the specified date range.")
             return None
+
+    def download_all(self, game_type="Blitz", save=True):
+        """
+        Performs a full historical download of Lichess ratings for a given game type.
+        """
+        print(f"🚀 Starting full historical download of '{game_type}' ratings...")
+        start_date = self.get_first_date(game_type=game_type)
+        if not start_date:
+            print(f"❌ Could not find any game history for '{game_type}'. Exiting.")
+            return None
+
+        end_date = datetime.date.today()
+
+        print(f"\nFound first game on {start_date}. Proceeding to download all history up to {end_date}.")
+
+        return self.download_range(start_date, end_date, game_type=game_type, save=save)
+
+    def download(self, game_type="Blitz", save=True):
+        """
+        Incrementally updates Lichess ratings, or performs a full download if the DB is empty.
+        """
+        print(f"🚀 Starting smart update for '{game_type}' ratings...")
+        last_date = self.get_last_recorded_date()
+
+        if not last_date:
+            print("\n- No existing Lichess data found. Starting full download.")
+            return self.download_all(game_type=game_type, save=save)
+
+        start_date = last_date + datetime.timedelta(days=1)
+        end_date = datetime.date.today()
+
+        print(f"🔍 Last saved date is {last_date}. Resuming download from {start_date} to {end_date}.")
+
+        if start_date > end_date:
+            print("✅ Database is already up-to-date. No new data to download.")
+            return None
+
+        return self.download_range(start_date, end_date, game_type=game_type, save=save)
 
     def get_ratings_from_db(self, start_date=None, end_date=None):
         """Retrieve ratings data from Supabase for a given date range."""
