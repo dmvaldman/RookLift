@@ -11,7 +11,7 @@ from utils import (
 )
 
 
-class Lichess:
+class LichessClient:
     def __init__(self, username):
         self.username = username
         self.timezone = "US/Pacific"
@@ -237,3 +237,17 @@ class Lichess:
         except Exception as e:
             print(f"❌ Error fetching last recorded date: {e}")
             return None
+
+
+
+if __name__ == "__main__":
+    import os
+    import dotenv
+
+    dotenv.load_dotenv()
+
+    lichess_username = os.environ.get("lichess_username")
+
+    client = LichessClient(lichess_username)
+    # client.download_all(game_type="Blitz", save=False)
+    client.download(game_type="Blitz", save=False)
