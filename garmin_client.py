@@ -40,7 +40,7 @@ class GarminClient:
 
             data.append({
                 "date": summary.get('calendarDate'),
-                "body_battery_during_sleep": int(bb_during_sleep) if bb_during_sleep is not None else None
+                "body_battery": int(bb_during_sleep) if bb_during_sleep is not None else None
             })
             time.sleep(API_DELAY)
         return data
@@ -293,3 +293,15 @@ class GarminClient:
             print("No Garmin data found in the database.")
 
         return latest_date
+
+
+if __name__ == "__main__":
+  import dotenv
+  dotenv.load_dotenv()
+
+  email = os.environ.get("garmin_email")
+  password = os.environ.get("garmin_password")
+  client = GarminClient(email, password)
+
+  # client.download_all(save=False)
+  client.download(save=False)
