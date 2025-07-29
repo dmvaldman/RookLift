@@ -104,11 +104,11 @@ def compare_datapoints(datapoints, column_names, ranges, importances):
     )
 def predict(save=True):
     features = [
-        # 'active_calories',
-        'activity_calories',
+        'active_calories',
+        # 'activity_calories',
         # 'awake_duration',
         # 'battery_max',
-        'body_battery',
+        # 'body_battery',
         'deep_duration',
         'stress_duration',
         'light_duration',

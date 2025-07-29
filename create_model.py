@@ -85,7 +85,7 @@ def evaluate_model(model, X, y, cv=5, plot=False):
 
     if plot:
         # Learning curves
-        train_sizes, train_scores, validation_scores = learning_curve(model, X, y, cv=cv, n_jobs=-1,
+        train_sizes, train_scores, validation_scores = learning_curve(model, X, y, cv=cv, n_jobs=1,
                                                                     train_sizes=np.linspace(0.1, 1.0, 10))
 
         # Calculate mean and standard deviation for training set scores
@@ -302,17 +302,17 @@ if __name__ == '__main__':
     save = True
     num_days_lag = 0 # whether to add lagged featured to the model. currently `predict.py` doesn't support it
     aggregate_activity = False # whether to aggregate activity data by summing previous N days
-    plot = False
+    plot = True
 
     # For historical reasons
     # classic features: ['activity_calories', 'awake_duration', 'deep_duration', 'light_duration', 'rem_duration', 'sleep_duration', 'sleep_score', 'sleep_stress', 'stress_avg']
 
     features = [
-        # 'active_calories',
-        'activity_calories',
+        'active_calories',
+        # 'activity_calories',
         # 'awake_duration',
         # 'battery_max',
-        'body_battery',
+        # 'body_battery',
         'deep_duration',
         'stress_duration',
         'light_duration',

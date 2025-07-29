@@ -190,6 +190,7 @@ class GarminClient:
         for download_func, table_name in download_map.items():
             print(f"\n--- Downloading {table_name} data ---")
             data = download_func(start_date, end_date)
+            print(data)
             if save:
                 self.save_to_db(data, table_name)
             all_data[table_name] = data
