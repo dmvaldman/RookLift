@@ -1,12 +1,12 @@
 # RookLift
 
-Analyze your Garmin fitness watch data against your Lichess rating.
+Personal backend for [RookLift](https://github.com/dmvaldman/Rooklift-frontend). Analyzes my Garmin fitness watch data against my Lichess rating to measure my intelligence any given day.
 
-Build a logistic regression model with your historical Garmin and Lichess data, then read it from your Garmin watch with the corresponding [RookLift-Frontend](https://github.com/dmvaldman/Rooklift-frontend)
+Builds a statistical model from time-series fitness/sleep metrics to predict whether I will win or lose at chess any given day.
+
+Uses Modal for cron jobs (one to build the model, the other to update my intelligence score) and Supabase to store the data.
 
 # Deploy with Modal
-
-Model creation are chess predictions are Cron jobs using Modal. Model creation happens once a week and predictions each morning.
 
 ```
 modal deploy -m deploy
