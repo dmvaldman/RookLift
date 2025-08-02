@@ -7,7 +7,7 @@ import logging
 import boto3
 import pandas as pd
 
-from modal_defs import image, secrets, vol, app, Cron, is_local
+from modal_defs import image, secrets, vol, app, is_local
 from create_model import load_model, predict_probabilities, preprocess
 from garmin_client import GarminClient
 from lichess_client import LichessClient
@@ -30,11 +30,7 @@ def get_garmin_metrics(garmin_client, date, features=None):
     Fetches Garmin metrics for a specific date, processes them, and returns a dictionary.
     Retries with the previous day on failure.
     """
-    try:
-        metrics_dict = garmin_client.download_day_metrics(date)
-    except Exception as e:
-        print(f"Error fetching data for {date}: {e}. Trying previous day.")
-        metrics_dict = garmin_client.download_day(date)
+    metrics_dict = garmin_client.download_day(date)
 
     # Convert the dictionary of metrics into a DataFrame for preprocessing
     df = pd.DataFrame([metrics_dict])
@@ -93,14 +89,11 @@ def compare_datapoints(datapoints, column_names, ranges, importances):
     metrics.sort(key=lambda x: x[1]['importance'], reverse=True)
     return metrics
 
-# 0 */3 * * * runs every 3 hrs
-# 0 1-23/3 * * * runs every 3 hrs starting at 1am
-# 0 14 * * * runs at 7am PT once a day
-@app.function(
+@app.webhook(
         image=image,
         secrets=[secrets],
         volumes={"/data": vol},
-        schedule=Cron("0 1-23/3 * * *")
+        method="GET"
     )
 def predict(save=True):
     features = [
