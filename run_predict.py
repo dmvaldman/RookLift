@@ -5,8 +5,9 @@ import datetime
 import pytz
 import logging
 import boto3
-import pandas as pd
 import modal
+import numpy as np
+import pandas as pd
 
 from modal_defs import image, secrets, vol, app, Cron, is_local
 from create_model import load_model, predict_probabilities, preprocess
@@ -35,9 +36,6 @@ def get_garmin_metrics(garmin_client, date, features=None):
 
     # Convert the dictionary of metrics into a DataFrame for preprocessing
     df = pd.DataFrame([metrics_dict])
-    if 'date' in df.columns:
-        df['date'] = pd.to_datetime(df['date'])
-
     df_processed = preprocess(df, features=features, include_rating_cols=False, num_days_lag=0, aggregate_activity=False, save=False)
     return df_processed.iloc[0].to_dict()
 
@@ -134,6 +132,9 @@ def run_prediction(save=True):
     datapoints = get_datapoints(date, lichess_client, garmin_client, column_names, features=features)
     level = predict_probabilities(datapoints, model, scaler)
 
+    # Whether data is fresh for the day or some fields have yet to update
+    fresh = not np.isnan(datapoints).any()
+
     # load ranges
     with open(ranges_path, 'r') as f:
         ranges = json.load(f)
@@ -142,10 +143,12 @@ def run_prediction(save=True):
 
     print(f"Level: {level}")
     print(f"Metrics:\n{json.dumps(metrics, indent=2)}")
+    print(f"Fresh:\n{fresh}")
 
     data = {
         "level": level,
-        "metrics": metrics
+        "metrics": metrics,
+        "fresh": fresh
     }
 
     if save:

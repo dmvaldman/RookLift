@@ -47,7 +47,7 @@ class GarminClient:
         return data
 
     def download_daily_summary(self, start_date, end_date):
-        """Downloads a summary of daily metrics for the given date range."""
+        """Downloads a summary of the previous day's daily metrics for the given date range."""
         data = []
         start_date_adj = start_date - datetime.timedelta(days=1)
         end_date_adj = end_date - datetime.timedelta(days=1)
@@ -112,11 +112,22 @@ class GarminClient:
                     "sleep_score": dto.get('sleepScores', {}).get('overall', {}).get('value'),
                     "awake_duration": dto.get('awakeSleepSeconds')
                 })
+            else:
+                data.append({
+                    "date": date.isoformat(),
+                    "sleep_stress": None,
+                    "light_duration": None,
+                    "rem_duration": None,
+                    "deep_duration": None,
+                    "sleep_duration": None,
+                    "sleep_score": None,
+                    "awake_duration": None
+                })
             time.sleep(API_DELAY)
         return data
 
     def download_activities(self, start_date, end_date):
-        """Downloads total calories burned during activities for the given date range."""
+        """Downloads total calories burned during previous day's activities for the given date range."""
         def get_chunk(start, end):
             activities_by_date = {}
             activities = self.client.get_activities_by_date(start.isoformat(), end.isoformat())
