@@ -6,6 +6,7 @@ import pytz
 import logging
 import boto3
 import pandas as pd
+import modal
 
 from modal_defs import image, secrets, vol, app, Cron, is_local
 from create_model import load_model, predict_probabilities, preprocess
@@ -142,15 +143,17 @@ def run_prediction(save=True):
     print(f"Level: {level}")
     print(f"Metrics:\n{json.dumps(metrics, indent=2)}")
 
-    if save:
-        save_to_S3(level, metrics)
-
-def save_to_S3(level, metrics):
     data = {
         "level": level,
         "metrics": metrics
     }
 
+    if save:
+        save_to_S3(data)
+
+    return data
+
+def save_to_S3(data):
     # upload file to bucket
     s3_client.put_object(Body=json.dumps(data), Bucket='rooklift', Key='rooklift.json')
 
@@ -158,21 +161,22 @@ def save_to_S3(level, metrics):
     s3_client.put_object_acl(ACL='public-read', Bucket='rooklift', Key='rooklift.json')
 
 
-@app.webhook(
+@app.function(
         image=image,
         secrets=[secrets],
-        volumes={"/data": vol},
-        method="GET"
+        volumes={"/data": vol}
     )
+@modal.fastapi_endpoint()
 def predict_webhook():
     """Webhook endpoint for on-demand predictions"""
-    return run_prediction(save=True)
+    result = run_prediction(save=True)
+    return result
 
 @app.function(
         image=image,
         secrets=[secrets],
         volumes={"/data": vol},
-        schedule=Cron("0 8,9-21/4 * * *")
+        schedule=Cron("0 9-21/4 * * *")
     )
 def predict_scheduled():
     """Scheduled function that runs at 8am, 9am, and every 4 hours after 9am"""

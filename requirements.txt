@@ -12,3 +12,4 @@ boto3
 garth
 modal
 supabase>=2.15.0
+fastapi[standard]
