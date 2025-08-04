@@ -131,14 +131,16 @@ def run_prediction(save=True):
 
     datapoints = get_datapoints(date, lichess_client, garmin_client, column_names, features=features)
 
-    # Whether data is fresh for the day or some fields have yet to update
-    fresh = not np.isnan(datapoints).any()
+    # Check if all data is complete
+    has_incomplete_data = np.isnan(datapoints).any()
+
+    if has_incomplete_data:
+        # Data is incomplete - just update freshness in existing S3 data
+        if save:
+            save_to_S3_freshness(fresh=False)
+        return {"status": "incomplete_data", "message": "Data not fresh, previous values maintained"}
 
     level = predict_probabilities(datapoints, model, scaler)
-
-    # Convert NaN/inf values to None for JSON serialization
-    if np.isnan(level) or np.isinf(level):
-        level = None
 
     # load ranges
     with open(ranges_path, 'r') as f:
@@ -146,19 +148,13 @@ def run_prediction(save=True):
 
     metrics = compare_datapoints(datapoints, column_names, ranges, importances)
 
-    # Convert NaN values in metrics to None for JSON serialization
-    for _, metric_data in metrics:
-        if np.isnan(metric_data['level']) or np.isinf(metric_data['level']):
-            metric_data['level'] = None
-
     print(f"Level: {level}")
     print(f"Metrics:\n{json.dumps(metrics, indent=2)}")
-    print(f"Fresh:\n{fresh}")
 
     data = {
         "level": level,
         "metrics": metrics,
-        "fresh": fresh
+        "fresh": True
     }
 
     if save:
@@ -172,6 +168,18 @@ def save_to_S3(data):
 
     # make file public
     s3_client.put_object_acl(ACL='public-read', Bucket='rooklift', Key='rooklift.json')
+
+def save_to_S3_freshness(fresh):
+    """Update only the freshness field in existing S3 data"""
+    # Get existing data from S3
+    response = s3_client.get_object(Bucket='rooklift', Key='rooklift.json')
+    existing_data = json.loads(response['Body'].read().decode('utf-8'))
+
+    # Update only the fresh field
+    existing_data['fresh'] = fresh
+
+    # Save back to S3
+    save_to_S3(existing_data)
 
 
 @app.function(
