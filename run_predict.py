@@ -130,16 +130,26 @@ def run_prediction(save=True):
     model, scaler, column_names, importances = load_model(model_path)
 
     datapoints = get_datapoints(date, lichess_client, garmin_client, column_names, features=features)
-    level = predict_probabilities(datapoints, model, scaler)
 
     # Whether data is fresh for the day or some fields have yet to update
     fresh = not np.isnan(datapoints).any()
+
+    level = predict_probabilities(datapoints, model, scaler)
+
+    # Convert NaN/inf values to None for JSON serialization
+    if np.isnan(level) or np.isinf(level):
+        level = None
 
     # load ranges
     with open(ranges_path, 'r') as f:
         ranges = json.load(f)
 
     metrics = compare_datapoints(datapoints, column_names, ranges, importances)
+
+    # Convert NaN values in metrics to None for JSON serialization
+    for _, metric_data in metrics:
+        if np.isnan(metric_data['level']) or np.isinf(metric_data['level']):
+            metric_data['level'] = None
 
     print(f"Level: {level}")
     print(f"Metrics:\n{json.dumps(metrics, indent=2)}")
