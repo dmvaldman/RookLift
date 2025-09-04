@@ -61,6 +61,7 @@ class GarminClient:
 
             steps = summary.get('totalSteps')
             sedentary_duration = summary.get('sedentarySeconds')
+            total_stress_duration = summary.get('totalStressDuration')
             low_stress_duration = summary.get('lowStressDuration')
             med_stress_duration = summary.get('mediumStressDuration')
             high_stress_duration = summary.get('highStressDuration')
@@ -71,10 +72,11 @@ class GarminClient:
                 "date": str(date_shifted),
                 "steps": int(steps) if steps is not None else None,
                 "sedentary_duration": int(sedentary_duration) if sedentary_duration is not None else None,
-                "low_stress_duration": int(low_stress_duration) if low_stress_duration is not None else None,
-                "med_stress_duration": int(med_stress_duration) if med_stress_duration is not None else None,
+                "low_stress_duration": int(low_stress_duration) if low_stress_duration is not None else 0,
+                "med_stress_duration": int(med_stress_duration) if med_stress_duration is not None else 0,
                 "stress_duration": int(high_stress_duration) if high_stress_duration is not None else 0,
-                "active_calories": int(active_calories) if active_calories is not None else None,
+                "total_stress_duration": int(total_stress_duration) if total_stress_duration is not None else 0,
+                "active_calories": int(active_calories) if active_calories is not None else 0,
                 "resting_heart_rate": int(resting_heart_rate) if resting_heart_rate is not None else None,
             })
             time.sleep(API_DELAY)
