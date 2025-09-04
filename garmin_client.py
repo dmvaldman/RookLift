@@ -38,10 +38,12 @@ class GarminClient:
             summary = self.client.get_user_summary(date.isoformat())
 
             bb_during_sleep = summary.get('bodyBatteryDuringSleep')
+            bodyBatteryMostRecentValue = summary.get('bodyBatteryChargedValue')
+            bodyBatteryLowestValue = summary.get('bodyBatteryLowestValue')
 
             data.append({
                 "date": summary.get('calendarDate'),
-                "body_battery": int(bb_during_sleep) if bb_during_sleep is not None else None
+                "body_battery": int(bb_during_sleep) if bb_during_sleep is not None else (bodyBatteryMostRecentValue - bodyBatteryLowestValue)
             })
             time.sleep(API_DELAY)
         return data
@@ -59,17 +61,21 @@ class GarminClient:
 
             steps = summary.get('totalSteps')
             sedentary_duration = summary.get('sedentarySeconds')
-            stress_duration = summary.get('highStressDuration')
             low_stress_duration = summary.get('lowStressDuration')
+            med_stress_duration = summary.get('mediumStressDuration')
+            high_stress_duration = summary.get('highStressDuration')
             active_calories = summary.get('activeKilocalories')
+            resting_heart_rate = summary.get('restingHeartRate')
 
             data.append({
                 "date": str(date_shifted),
                 "steps": int(steps) if steps is not None else None,
                 "sedentary_duration": int(sedentary_duration) if sedentary_duration is not None else None,
-                "stress_duration": int(stress_duration) if stress_duration is not None else None,
                 "low_stress_duration": int(low_stress_duration) if low_stress_duration is not None else None,
+                "med_stress_duration": int(med_stress_duration) if med_stress_duration is not None else None,
+                "stress_duration": int(high_stress_duration) if high_stress_duration is not None else 0,
                 "active_calories": int(active_calories) if active_calories is not None else None,
+                "resting_heart_rate": int(resting_heart_rate) if resting_heart_rate is not None else None,
             })
             time.sleep(API_DELAY)
         return data
